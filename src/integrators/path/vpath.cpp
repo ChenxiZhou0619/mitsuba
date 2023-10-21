@@ -26,19 +26,16 @@ public:
     Spectrum        L(.0f);
     Spectrum        beta(1.f);
 
+    int bounces = 0;
+
     while (true) {
       bool found_intersection = rRec.rayIntersect(ray);
 
       if (rRec.medium) {
-        //
+        bool  scattered  = false;
+        bool  terminated = false;
+        Float t_max      = found_intersection ? its.t : INFINITY;
       }
-
-      if (found_intersection) {
-        L.fromLinearRGB(its.geoFrame.n.x, its.geoFrame.n.y, its.geoFrame.n.z);
-        L += Spectrum(1.f);
-        L *= .5f;
-      }
-      break;
     }
 
     return L;

@@ -52,3 +52,12 @@ mitsuba.*.log
 
 # CLion
 .idea
+
+# Scenes
+scenes
+
+# References
+references
+
+# clang-format
+.clang-format

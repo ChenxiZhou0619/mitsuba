@@ -1,5 +1,5 @@
 # About
-This repository holds a compilable version of the [Mitsuba Renderer](https://github.com/mitsuba-renderer/mitsuba). The original code and build scripts are somewhat outdated, and do not work quite well on today's machine.
+Fork from https://github.com/MC-K1nG/mitsuba
 
 # Note
 **Only Linux** system is currently supported. On Windows or Mac OS, you may use the **WSL subsystem** or **Docker container**. In general, running within a Docker container is much more recommended. WSL can have some compatability issues.

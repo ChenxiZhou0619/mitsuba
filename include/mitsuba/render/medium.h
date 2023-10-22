@@ -96,6 +96,16 @@ public:
   std::string toString() const;
 };
 
+struct MTS_EXPORT_RENDER MajorantSamplingRecord {
+  Float         free_flight;
+  Spectrum      tr_majorant;
+  Spectrum      sigma_maj, sigma_a, sigma_s, sigma_n;
+  Point3        p;
+  const Medium *medium = nullptr;
+
+  const PhaseFunction *getPhaseFunction() const;
+};
+
 /** \brief Abstract participating medium
  * \ingroup librender
  */
@@ -189,8 +199,8 @@ public:
   // =============================================================
 
   //* Sample a free flight according to sigma_maj
-  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
-                                bool *terminated) const = 0;
+  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax, bool *terminated,
+                                MajorantSamplingRecord *maj_rec) const = 0;
 
   MTS_DECLARE_CLASS()
 protected:
@@ -211,10 +221,26 @@ protected:
 };
 // TODO
 template <typename F>
-Spectrum SampleTrMajorant(const Medium *medium, const RayDifferential &ray, Float tmax, RNG_CX &rng,
+Spectrum SampleTrMajorant(const Medium *medium, RayDifferential ray, Float tmax, RNG_CX &rng,
                           F callback) {
+  MajorantSamplingRecord maj_rec;
+  bool                   terminated = false;
   while (true) {
+    // Sample majorant transmittance
+    // Terminate if pass through the media
+    medium->sampleTrMajorant(ray, rng.randomFloat(), tmax, &terminated, &maj_rec);
+    if (terminated) return maj_rec.tr_majorant;
+
+    // Sample the collision type according to callback
+    bool continue_track = callback(maj_rec);
+    if (!continue_track) break;
+
+    // Continue the tracking
+    ray.o = maj_rec.p;
+    tmax -= maj_rec.free_flight;
   }
+
+  return Spectrum(1.f);
 }
 
 MTS_NAMESPACE_END

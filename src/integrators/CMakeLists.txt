@@ -27,3 +27,6 @@ add_mts_plugin(erpt erpt/erpt.cpp erpt/erpt_proc.cpp)
 
 # Volumetric
 add_mts_plugin(vns path/vpath.cpp)
+
+# Spectral
+add_mts_plugin(spath path/spectralpath.cpp)

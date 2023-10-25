@@ -26,3 +26,6 @@ add_mts_plugin(hk hk.cpp)
 add_mts_plugin(null null.cpp)
 add_mts_plugin(thindielectric thindielectric.cpp)
 add_mts_plugin(irawan irawan.cpp)
+
+# Added materials
+add_mts_plugin(cauchy cauchydielectric.cpp)

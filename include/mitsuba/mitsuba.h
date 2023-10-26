@@ -16,6 +16,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+// clang-format off
 #pragma once
 #if !defined(__MITSUBA_MITSUBA_H_)
 #define __MITSUBA_MITSUBA_H_
@@ -56,5 +57,7 @@ using std::endl;
 #include <mitsuba/core/normal.h>
 #include <mitsuba/core/spectrum.h>
 #include <mitsuba/core/util.h>
+
+#include <mitsuba/core/sampledspectrum.h>
 
 #endif /* __MITSUBA_MITSUBA_H_ */

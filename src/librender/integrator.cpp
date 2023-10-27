@@ -229,107 +229,109 @@ void MonteCarloIntegrator::serialize(Stream *stream, InstanceManager *manager) c
   stream->writeBool(m_hideEmitters);
 }
 
-SpectralMonteCarloIntegrator::SpectralMonteCarloIntegrator(const Properties &props)
-    : SamplingIntegrator(props) {
-  /* Depth to begin using russian roulette */
-  m_rrDepth = props.getInteger("rrDepth", 5);
-
-  /* Longest visualized path depth (\c -1 = infinite).
-     A value of \c 1 will visualize only directly visible light sources.
-     \c 2 will lead to single-bounce (direct-only) illumination, and so on. */
-  m_maxDepth = props.getInteger("maxDepth", -1);
-
-  /**
-   * This parameter specifies the action to be taken when the geometric
-   * and shading normals of a surface don't agree on whether a ray is on
-   * the front or back-side of a surface.
-   *
-   * When \c strictNormals is set to \c false, the shading normal has
-   * precedence, and rendering proceeds normally at the risk of
-   * introducing small light leaks (this is the default).
-   *
-   * When \c strictNormals is set to \c true, the random walk is
-   * terminated when encountering such a situation. This may
-   * lead to silhouette darkening on badly tesselated meshes.
-   */
-  m_strictNormals = props.getBoolean("strictNormals", false);
-
-  /**
-   * When this flag is set to true, contributions from directly
-   * visible emitters will not be included in the rendered image
-   */
-  m_hideEmitters = props.getBoolean("hideEmitters", false);
-
-  if (m_rrDepth <= 0) Log(EError, "'rrDepth' must be set to a value greater than zero!");
-
-  if (m_maxDepth <= 0 && m_maxDepth != -1)
-    Log(EError, "'maxDepth' must be set to -1 (infinite) or a value greater than zero!");
-}
-
-SpectralMonteCarloIntegrator::SpectralMonteCarloIntegrator(Stream *stream, InstanceManager *manager)
-    : SamplingIntegrator(stream, manager) {
-  m_rrDepth       = stream->readInt();
-  m_maxDepth      = stream->readInt();
-  m_strictNormals = stream->readBool();
-  m_hideEmitters  = stream->readBool();
-}
-
-void SpectralMonteCarloIntegrator::serialize(Stream *stream, InstanceManager *manager) const {
-  SamplingIntegrator::serialize(stream, manager);
-  stream->writeInt(m_rrDepth);
-  stream->writeInt(m_maxDepth);
-  stream->writeBool(m_strictNormals);
-  stream->writeBool(m_hideEmitters);
-}
-
-void SpectralMonteCarloIntegrator::renderBlock(const Scene *scene, const Sensor *sensor,
-                                               Sampler *sampler, ImageBlock *block,
-                                               const bool                          &stop,
-                                               const std::vector<TPoint2<uint8_t>> &points) const {
-  Float diffScaleFactor = 1.0f / std::sqrt((Float)sampler->getSampleCount());
-
-  bool needsApertureSample = sensor->needsApertureSample();
-  bool needsTimeSample     = sensor->needsTimeSample();
-
-  RadianceQueryRecord rRec(scene, sampler);
-  Point2              apertureSample(0.5f);
-  Float               timeSample = 0.5f;
-  RayDifferential     sensorRay;
-
-  block->clear();
-
-  uint32_t queryType = RadianceQueryRecord::ESensorRay;
-
-  if (!sensor->getFilm()->hasAlpha()) /* Don't compute an alpha channel if we don't have to */
-    queryType &= ~RadianceQueryRecord::EOpacity;
-
-  for (size_t i = 0; i < points.size(); ++i) {
-    Point2i offset = Point2i(points[i]) + Vector2i(block->getOffset());
-    if (stop) break;
-
-    sampler->generate(offset);
-
-    for (size_t j = 0; j < sampler->getSampleCount(); j++) {
-      rRec.newQuery(queryType, sensor->getMedium());
-      Point2 samplePos(Point2(offset) + Vector2(rRec.nextSample2D()));
-
-      if (needsApertureSample) apertureSample = rRec.nextSample2D();
-      if (needsTimeSample) timeSample = rRec.nextSample1D();
-
-      //* Sample the ray
-      sensor->sampleRayDifferential(sensorRay, samplePos, apertureSample, timeSample);
-      sensorRay.scaleDifferential(diffScaleFactor);
-
-      //* Sample hero-wavelength for sensor ray
-      SampledWavelengths lambda = SampledWavelengths::SampleUniform(rRec.nextSample1D());
-      SampledSpectrum    spec   = Li(sensorRay, lambda, rRec);
-      Spectrum           rgb    = spec.toRGB(lambda);
-
-      block->put(samplePos, rgb, rRec.alpha);
-      sampler->advance();
-    }
-  }
-}
+// SpectralMonteCarloIntegrator::SpectralMonteCarloIntegrator(const Properties &props)
+//     : SamplingIntegrator(props) {
+//   /* Depth to begin using russian roulette */
+//   m_rrDepth = props.getInteger("rrDepth", 5);
+//
+//   /* Longest visualized path depth (\c -1 = infinite).
+//      A value of \c 1 will visualize only directly visible light sources.
+//      \c 2 will lead to single-bounce (direct-only) illumination, and so on. */
+//   m_maxDepth = props.getInteger("maxDepth", -1);
+//
+//   /**
+//    * This parameter specifies the action to be taken when the geometric
+//    * and shading normals of a surface don't agree on whether a ray is on
+//    * the front or back-side of a surface.
+//    *
+//    * When \c strictNormals is set to \c false, the shading normal has
+//    * precedence, and rendering proceeds normally at the risk of
+//    * introducing small light leaks (this is the default).
+//    *
+//    * When \c strictNormals is set to \c true, the random walk is
+//    * terminated when encountering such a situation. This may
+//    * lead to silhouette darkening on badly tesselated meshes.
+//    */
+//   m_strictNormals = props.getBoolean("strictNormals", false);
+//
+//   /**
+//    * When this flag is set to true, contributions from directly
+//    * visible emitters will not be included in the rendered image
+//    */
+//   m_hideEmitters = props.getBoolean("hideEmitters", false);
+//
+//   if (m_rrDepth <= 0) Log(EError, "'rrDepth' must be set to a value greater than zero!");
+//
+//   if (m_maxDepth <= 0 && m_maxDepth != -1)
+//     Log(EError, "'maxDepth' must be set to -1 (infinite) or a value greater than zero!");
+// }
+//
+// SpectralMonteCarloIntegrator::SpectralMonteCarloIntegrator(Stream *stream, InstanceManager
+// *manager)
+//     : SamplingIntegrator(stream, manager) {
+//   m_rrDepth       = stream->readInt();
+//   m_maxDepth      = stream->readInt();
+//   m_strictNormals = stream->readBool();
+//   m_hideEmitters  = stream->readBool();
+// }
+//
+// void SpectralMonteCarloIntegrator::serialize(Stream *stream, InstanceManager *manager) const {
+//   SamplingIntegrator::serialize(stream, manager);
+//   stream->writeInt(m_rrDepth);
+//   stream->writeInt(m_maxDepth);
+//   stream->writeBool(m_strictNormals);
+//   stream->writeBool(m_hideEmitters);
+// }
+//
+// void SpectralMonteCarloIntegrator::renderBlock(const Scene *scene, const Sensor *sensor,
+//                                                Sampler *sampler, ImageBlock *block,
+//                                                const bool                          &stop,
+//                                                const std::vector<TPoint2<uint8_t>> &points) const
+//                                                {
+//   Float diffScaleFactor = 1.0f / std::sqrt((Float)sampler->getSampleCount());
+//
+//   bool needsApertureSample = sensor->needsApertureSample();
+//   bool needsTimeSample     = sensor->needsTimeSample();
+//
+//   RadianceQueryRecord rRec(scene, sampler);
+//   Point2              apertureSample(0.5f);
+//   Float               timeSample = 0.5f;
+//   RayDifferential     sensorRay;
+//
+//   block->clear();
+//
+//   uint32_t queryType = RadianceQueryRecord::ESensorRay;
+//
+//   if (!sensor->getFilm()->hasAlpha()) /* Don't compute an alpha channel if we don't have to */
+//     queryType &= ~RadianceQueryRecord::EOpacity;
+//
+//   for (size_t i = 0; i < points.size(); ++i) {
+//     Point2i offset = Point2i(points[i]) + Vector2i(block->getOffset());
+//     if (stop) break;
+//
+//     sampler->generate(offset);
+//
+//     for (size_t j = 0; j < sampler->getSampleCount(); j++) {
+//       rRec.newQuery(queryType, sensor->getMedium());
+//       Point2 samplePos(Point2(offset) + Vector2(rRec.nextSample2D()));
+//
+//       if (needsApertureSample) apertureSample = rRec.nextSample2D();
+//       if (needsTimeSample) timeSample = rRec.nextSample1D();
+//
+//       //* Sample the ray
+//       sensor->sampleRayDifferential(sensorRay, samplePos, apertureSample, timeSample);
+//       sensorRay.scaleDifferential(diffScaleFactor);
+//
+//       //* Sample hero-wavelength for sensor ray
+//       SampledWavelengths lambda = SampledWavelengths::SampleUniform(rRec.nextSample1D());
+//       SampledSpectrum    spec   = Li(sensorRay, lambda, rRec);
+//       Spectrum           rgb    = spec.toRGB(lambda);
+//
+//       block->put(samplePos, rgb, rRec.alpha);
+//       sampler->advance();
+//     }
+//   }
+// }
 
 std::string RadianceQueryRecord::toString() const {
   std::ostringstream oss;
@@ -356,5 +358,4 @@ std::string RadianceQueryRecord::toString() const {
 MTS_IMPLEMENT_CLASS(Integrator, true, NetworkedObject)
 MTS_IMPLEMENT_CLASS(SamplingIntegrator, true, Integrator)
 MTS_IMPLEMENT_CLASS(MonteCarloIntegrator, true, SamplingIntegrator)
-MTS_IMPLEMENT_CLASS(SpectralMonteCarloIntegrator, true, SamplingIntegrator)
 MTS_NAMESPACE_END

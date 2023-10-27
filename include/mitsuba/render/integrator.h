@@ -460,39 +460,39 @@ protected:
  * \brief Base class for full-spectrum Monte Carlo integrators, which samples a hero-wavelength
  * for each traced ray
  */
-class MTS_EXPORT_RENDER SpectralMonteCarloIntegrator : public SamplingIntegrator {
-public:
-  Spectrum Li(const RayDifferential &ray, RadianceQueryRecord &rRec) const final {
-    // No implementation for SpectralMonteCarloIntegrator drived class
-    printf("SpectralMonteCarloIntegrator shouldn't call this function\n");
-    exit(1);
-  }
-
-  virtual SampledSpectrum Li(const RayDifferential &ray, SampledWavelengths &lambda,
-                             RadianceQueryRecord &rRec) const = 0;
-
-  /// Serialize
-  void serialize(Stream *stream, InstanceManager *manager) const;
-
-  virtual void renderBlock(const Scene *scene, const Sensor *sensor, Sampler *sampler,
-                           ImageBlock *block, const bool &stop,
-                           const std::vector<TPoint2<uint8_t>> &points) const;
-
-  MTS_DECLARE_CLASS()
-protected:
-  // Create
-  SpectralMonteCarloIntegrator(const Properties &props);
-
-  SpectralMonteCarloIntegrator(Stream *stream, InstanceManager *manager);
-
-  virtual ~SpectralMonteCarloIntegrator() {}
-
-protected:
-  int  m_maxDepth;
-  int  m_rrDepth;
-  bool m_strictNormals;
-  bool m_hideEmitters;
-};
+// class MTS_EXPORT_RENDER SpectralMonteCarloIntegrator : public SamplingIntegrator {
+// public:
+//   Spectrum Li(const RayDifferential &ray, RadianceQueryRecord &rRec) const final {
+//     // No implementation for SpectralMonteCarloIntegrator drived class
+//     printf("SpectralMonteCarloIntegrator shouldn't call this function\n");
+//     exit(1);
+//   }
+//
+//   virtual SampledSpectrum Li(const RayDifferential &ray, SampledWavelengths &lambda,
+//                              RadianceQueryRecord &rRec) const = 0;
+//
+//   /// Serialize
+//   void serialize(Stream *stream, InstanceManager *manager) const;
+//
+//   virtual void renderBlock(const Scene *scene, const Sensor *sensor, Sampler *sampler,
+//                            ImageBlock *block, const bool &stop,
+//                            const std::vector<TPoint2<uint8_t>> &points) const;
+//
+//   MTS_DECLARE_CLASS()
+// protected:
+//   // Create
+//   SpectralMonteCarloIntegrator(const Properties &props);
+//
+//   SpectralMonteCarloIntegrator(Stream *stream, InstanceManager *manager);
+//
+//   virtual ~SpectralMonteCarloIntegrator() {}
+//
+// protected:
+//   int  m_maxDepth;
+//   int  m_rrDepth;
+//   bool m_strictNormals;
+//   bool m_hideEmitters;
+// };
 
 MTS_NAMESPACE_END
 

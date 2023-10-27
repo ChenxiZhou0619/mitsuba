@@ -14,6 +14,9 @@ class Spectrum;
 class SampledWavelengths {
 public:
   static SampledWavelengths SampleUniform(Float u);
+
+private:
+  std::array<Float, NSpectrumSamples> wavelengths, pdfs;
 };
 
 class SampledSpectrum {

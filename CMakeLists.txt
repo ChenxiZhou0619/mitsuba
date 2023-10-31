@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/target)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/target)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/target)
+
 project(Mitsuba
   VERSION 0.6.0
   DESCRIPTION
@@ -29,6 +33,7 @@ add_compile_definitions(
   MTS_SSE MTS_HAS_COHERENT_RT)
 
 include_directories(include)
+include_directories(ext/openpgl/openpgl/include)
 
 # Load the configure script
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/data/cmake)
@@ -37,6 +42,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES Linux)
 else()
   message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} System is currently not supported")
 endif()
+
+# Build dependencies
+add_subdirectory(ext/openpgl)
 
 # Build the source code
 add_subdirectory(src)

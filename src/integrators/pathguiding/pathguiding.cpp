@@ -5,7 +5,8 @@
 #include <mitsuba/render/scene.h>
 #include <mitsuba/render/renderproc.h>
 
-#include <openpgl/cpp/OpenPGL.h>
+
+#include "PathInfo.h"
 // clang-format on
 MTS_NAMESPACE_BEGIN
 
@@ -26,9 +27,10 @@ public:
     m_device = new PGL_Device(PGL_DEVICE_TYPE_CPU_4);
     PGLFieldArguments fieldArgs;
     pglFieldArgumentsSetDefaults(fieldArgs, PGL_SPATIAL_STRUCTURE_KDTREE,
-                                 PGL_DIRECTIONAL_DISTRIBUTION_QUADTREE);
-
+                                 PGL_DIRECTIONAL_DISTRIBUTION_VMM);
     m_field = new PGL_Field(m_device, fieldArgs);
+
+    m_num_iterations = props.getInteger("num_iterations", 4);
   }
 
   PathGuidingTracer(Stream *stream, InstanceManager *manager)
@@ -62,14 +64,15 @@ public:
     Spectrum beta(1.f);
     Float    eta = 1.f;
 
+    Spectrum debug_ld(.0f);
+    Spectrum debug_le(.0f);
+
     bool scattered = false;
 
     rRec.rayIntersect(ray);
     ray.mint = Epsilon;
 
-    //!
-    PGL_PathSegmentStorge path_storge;
-    path_storge.Reserve(m_maxDepth);
+    PathInfo p_info(m_maxDepth);
 
     while (rRec.depth <= m_maxDepth || m_maxDepth < 0) {
       if (!its.isValid()) {
@@ -80,13 +83,16 @@ public:
         break;
       }
 
-      const BSDF *bsdf = its.getBSDF(ray);
+      //* Add a new vertex in p_info
+      p_info.AddVertex(its.p); //!
 
+      const BSDF *bsdf = its.getBSDF(ray);
       /* Possibly include emitted radiance if requested */
       if (its.isEmitter() && (rRec.type & RadianceQueryRecord::EEmittedRadiance) &&
-          (!m_hideEmitters || scattered))
+          (!m_hideEmitters || scattered)) {
         Li += beta * its.Le(-ray.d);
-
+        debug_le += beta * its.Le(-ray.d);
+      }
       /* Include radiance from a subsurface scattering model if requested */
       if (its.hasSubsurface() && (rRec.type & RadianceQueryRecord::ESubsurfaceRadiance))
         Li += beta * its.LoSub(scene, rRec.sampler, -ray.d, rRec.depth);
@@ -101,20 +107,14 @@ public:
         break;
       }
 
-      PGL_PathSegment path_segment;
-
-      path_segment.position     = {its.p.x, its.p.y, its.p.z};
-      path_segment.directionOut = {-ray.d.x, -ray.d.y, -ray.d.z};
-      path_segment.normal       = {its.geoFrame.n.x, its.geoFrame.n.y, its.geoFrame.n.z};
-
       /* ==================================================================== */
       /*                     Direct illumination sampling                     */
       /* ==================================================================== */
 
       PGL_SurfaceDistribution distr(m_field);
-      if (!m_training) {
-        Float f           = (Float)rand() / RAND_MAX;
-        bool  distr_valid = distr.Init(m_field, {its.p.x, its.p.y, its.p.z}, f);
+      if (iteration_idx != 0) {
+        Float f = (Float)rand() / RAND_MAX;
+        distr.Init(m_field, {its.p.x, its.p.y, its.p.z}, f);
       }
 
       /* Estimate the direct illumination if this is requested */
@@ -142,15 +142,17 @@ public:
             Float bsdfPdf =
                 (emitter->isOnSurface() && dRec.measure == ESolidAngle) ? bsdf->pdf(bRec) : 0;
 
-            if (!m_training) bsdfPdf = distr.PDF({dRec.d[0], dRec.d[1], dRec.d[2]});
+            if (iteration_idx != 0)
+              bsdfPdf = (distr.PDF({dRec.d[0], dRec.d[1], dRec.d[2]}) + bsdfPdf) * .5f;
 
             /* Weight using the power heuristic */
             Float    weight = miWeight(dRec.pdf, bsdfPdf);
-            Spectrum Ld     = value * bsdfVal;
-            Li += weight * beta * Ld;
+            Spectrum Ld     = value * bsdfVal * weight;
+            Li += beta * Ld;
 
-            path_segment.directContribution = {Ld[0], Ld[1], Ld[2]};
-            path_segment.miWeight           = weight;
+            p_info.AddLdContribution(Ld); //!
+
+            if (rRec.depth == 0) debug_ld += beta * Ld;
           }
         }
       }
@@ -163,13 +165,31 @@ public:
       Float              bsdfPdf;
       BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
       Spectrum           bsdfWeight(.0f);
-      if (m_training)
+
+      bool sampleBSDF = (Float)rand() / RAND_MAX > .5f;
+
+      if (iteration_idx == 0 || !(bsdf->getType() & BSDF::ESmooth))
         bsdfWeight = bsdf->sample(bRec, bsdfPdf, rRec.nextSample2D());
       else {
+        Float pdf_bsdf;
+        Float pdf_guiding;
+
         auto [u1, u2] = rRec.nextSample2D();
-        pgl_vec3f dir;
-        bsdfPdf    = distr.SamplePDF({u1, u2}, dir);
-        bRec.wo    = {its.toLocal({dir.x, dir.y, dir.z})};
+
+        if (sampleBSDF) {
+          bsdf->sample(bRec, {u1, u2});
+        } else {
+          auto wo_world = distr.Sample({u1, u2});
+          bRec.wo       = {wo_world.x, wo_world.y, wo_world.z};
+          bRec.wo       = its.toLocal(bRec.wo);
+        }
+
+        pdf_bsdf = bsdf->pdf(bRec);
+
+        Vector wo_world = its.toWorld(bRec.wo);
+        pdf_guiding     = distr.PDF({wo_world[0], wo_world[1], wo_world[2]});
+
+        bsdfPdf    = .5f * (pdf_bsdf + pdf_guiding);
         bsdfWeight = bsdf->eval(bRec) / bsdfPdf;
       }
 
@@ -214,9 +234,9 @@ public:
       beta *= bsdfWeight;
       eta *= bRec.eta;
 
-      path_segment.scatteringWeight = {bsdfWeight[0], bsdfWeight[1], bsdfWeight[2]};
-      path_segment.pdfDirectionIn   = bsdfPdf;
-      path_segment.directionIn      = {wo[0], wo[1], wo[2]};
+      p_info.UpdateBeta(bsdfWeight);
+      p_info.SetPdf(bsdfPdf);
+      p_info.SetDirection(wo);
 
       /* If a luminaire was hit, estimate the local illumination and
          weight using the power heuristic */
@@ -225,13 +245,12 @@ public:
            implemented direct illumination sampling technique */
         const Float lumPdf =
             (!(bRec.sampledType & BSDF::EDelta)) ? scene->pdfEmitterDirect(dRec) : 0;
-        Spectrum Ld = value * miWeight(bsdfPdf, lumPdf);
-        Li += beta * Ld;
-        path_segment.scatteredContribution = {Ld[0], Ld[1], Ld[2]};
-      }
+        Spectrum Ld   = value;
+        Float    misw = miWeight(bsdfPdf, lumPdf);
+        Li += beta * Ld * misw;
 
-      if (m_training) {
-        path_storge.AddSegment(path_segment);
+        p_info.AddLdContribution(Ld * misw);
+        if (rRec.depth == 0) debug_ld += beta * Ld * misw;
       }
 
       /* ==================================================================== */
@@ -242,6 +261,8 @@ public:
          BSDF sample or if indirect illumination was not requested */
       if (!its.isValid() || !(rRec.type & RadianceQueryRecord::EIndirectSurfaceRadiance)) break;
       rRec.type = RadianceQueryRecord::ERadianceNoEmission;
+
+      p_info.SetDistance(its.t);
 
       if (rRec.depth++ >= m_rrDepth) {
         /* Russian roulette: try to keep path weights equal to one,
@@ -256,9 +277,9 @@ public:
     }
 
     if (m_training) {
-      size_t               n_samples = path_storge.PrepareSamples(true, true);
-      const PGLSampleData *data      = path_storge.GetSamples(n_samples);
-      m_storge.AddSamples(data, n_samples);
+      std::vector<PGLSampleData> data;
+      size_t                     numSamples = p_info.ToPGLSampleData(data);
+      m_storge.AddSamples(data.data(), numSamples);
     }
 
     return Li;
@@ -279,8 +300,9 @@ private:
 
   bool m_training;
 
-  int m_n_iterations;
-  int m_n_samples_per_itr;
+  int m_num_iterations;
+
+  int iteration_idx = 0;
 
   MTS_DECLARE_CLASS()
 };
@@ -306,38 +328,47 @@ void PathGuidingTracer::train(Scene *scene, RenderQueue *queue, const RenderJob 
   ref<Sensor>    sensor      = static_cast<Sensor *>(sched->getResource(sensorResID));
   ref<Scene>     train_scene = new Scene(scene);
 
-  const int  trainSceneResID        = sched->registerResource(train_scene);
-  Properties training_sampler_props = scene->getSampler()->getProperties();
+  const int trainSceneResID = sched->registerResource(train_scene);
 
-  training_sampler_props.removeProperty("sampleCount");
-  training_sampler_props.setSize("sampleCount", 16); // TODO
+  for (int i = 0; i < m_num_iterations; ++i) {
+    Properties training_sampler_props = scene->getSampler()->getProperties();
 
-  ref<Sampler> train_sampler = static_cast<Sampler *>(
-      PluginManager::getInstance()->createObject(MTS_CLASS(Sampler), training_sampler_props));
-  train_sampler->configure();
-  train_scene->setSampler(train_sampler);
+    training_sampler_props.removeProperty("sampleCount");
+    training_sampler_props.setSize("sampleCount", std::pow(2, i));
 
-  //* Create a sampler for each thread
-  std::vector<SerializableObject *> samplers(sched->getCoreCount());
-  for (size_t i = 0; i < sched->getCoreCount(); ++i) {
-    ref<Sampler> cloned_sampler = train_sampler->clone();
-    cloned_sampler->incRef();
-    samplers[i] = cloned_sampler.get();
+    ref<Sampler> train_sampler = static_cast<Sampler *>(
+        PluginManager::getInstance()->createObject(MTS_CLASS(Sampler), training_sampler_props));
+    train_sampler->configure();
+    train_scene->setSampler(train_sampler);
+
+    //* Create a sampler for each thread
+    std::vector<SerializableObject *> samplers(sched->getCoreCount());
+    for (size_t i = 0; i < sched->getCoreCount(); ++i) {
+      ref<Sampler> cloned_sampler = train_sampler->clone();
+      cloned_sampler->incRef();
+      samplers[i] = cloned_sampler.get();
+    }
+    int trainingSamplerResID = sched->registerMultiResource(samplers);
+    for (size_t i = 0; i < sched->getCoreCount(); ++i)
+      samplers[i]->decRef();
+
+    SamplingIntegrator::render(train_scene, queue, job, trainSceneResID, sensorResID,
+                               trainingSamplerResID);
+
+    m_field->Update(m_storge);
+    m_storge.Clear();
+    sched->unregisterResource(trainingSamplerResID);
+
+    iteration_idx++;
+
+    sensor->getFilm()->clear();
   }
-  int trainingSamplerResID = sched->registerMultiResource(samplers);
-  for (size_t i = 0; i < sched->getCoreCount(); ++i)
-    samplers[i]->decRef();
 
-  SamplingIntegrator::render(train_scene, queue, job, trainSceneResID, sensorResID,
-                             trainingSamplerResID);
-
-  m_field->Update(m_storge);
   m_field->Validate();
 
   Log(EInfo, "Training end");
 
   m_training = false;
-  sched->unregisterResource(trainingSamplerResID);
 }
 
 MTS_IMPLEMENT_CLASS(PathGuidingTracer, false, MonteCarloIntegrator)

@@ -10,7 +10,8 @@ endif()
 
 link_libraries(
   ${XercesC_LIBRARIES}
-  ${GL_LIBRARIES})
+  ${GL_LIBRARIES}
+  )
 
 add_mts_executable(mtsutil mtsutil.cpp)
 add_mts_executable(mtssrv mtssrv.cpp)

@@ -1,0 +1,3 @@
+[submodule "ext/openpgl"]
+	path = ext/openpgl
+	url = git@github.com:OpenPathGuidingLibrary/openpgl.git

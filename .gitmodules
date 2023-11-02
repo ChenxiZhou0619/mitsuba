@@ -1,3 +1,6 @@
 [submodule "ext/openpgl"]
 	path = ext/openpgl
 	url = git@github.com:OpenPathGuidingLibrary/openpgl.git
+[submodule "ext/openvdb"]
+	path = ext/openvdb
+	url = git@github.com:AcademySoftwareFoundation/openvdb.git

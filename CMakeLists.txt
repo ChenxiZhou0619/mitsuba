@@ -34,6 +34,7 @@ add_compile_definitions(
 
 include_directories(include)
 include_directories(ext/openpgl/openpgl/include)
+include_directories(ext/openvdb/nanovdb)
 
 # Load the configure script
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/data/cmake)

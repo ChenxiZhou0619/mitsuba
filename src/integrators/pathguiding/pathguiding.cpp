@@ -20,7 +20,6 @@ using PGL_PathSegment         = openpgl::cpp::PathSegment;
 
 class PathGuidingTracer : public MonteCarloIntegrator {
 public:
-  // TODO
   PathGuidingTracer(const Properties &props) : MonteCarloIntegrator(props) {
 
     //* Default SD structure KDTree + VMM
@@ -38,7 +37,7 @@ public:
     Log(EError, "PathGuidingTracer serialization is not support\n");
   }
 
-  void serializa(Stream *stream, InstanceManager *manager) {
+  void serialize(Stream *stream, InstanceManager *manager) const override {
     MonteCarloIntegrator::serialize(stream, manager);
     Log(EError, "PathGuidingTracer serialization is not support\n");
   }
@@ -64,9 +63,6 @@ public:
     Spectrum beta(1.f);
     Float    eta = 1.f;
 
-    Spectrum debug_ld(.0f);
-    Spectrum debug_le(.0f);
-
     bool scattered = false;
 
     rRec.rayIntersect(ray);
@@ -91,7 +87,6 @@ public:
       if (its.isEmitter() && (rRec.type & RadianceQueryRecord::EEmittedRadiance) &&
           (!m_hideEmitters || scattered)) {
         Li += beta * its.Le(-ray.d);
-        debug_le += beta * its.Le(-ray.d);
       }
       /* Include radiance from a subsurface scattering model if requested */
       if (its.hasSubsurface() && (rRec.type & RadianceQueryRecord::ESubsurfaceRadiance))
@@ -151,8 +146,6 @@ public:
             Li += beta * Ld;
 
             p_info.AddLdContribution(Ld); //!
-
-            if (rRec.depth == 0) debug_ld += beta * Ld;
           }
         }
       }
@@ -250,7 +243,6 @@ public:
         Li += beta * Ld * misw;
 
         p_info.AddLdContribution(Ld * misw);
-        if (rRec.depth == 0) debug_ld += beta * Ld * misw;
       }
 
       /* ==================================================================== */

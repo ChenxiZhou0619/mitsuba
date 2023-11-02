@@ -417,7 +417,23 @@ public:
   //* Sample a free flight according to sigma_maj
   virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const {
-    //
+    Float extinction_maj = m_sigmaT[0];
+    Float distance       = -math::fastlog(1 - u) / extinction_maj;
+    if (distance > tmax) {
+      *terminated          = true;
+      maj_rec->free_flight = tmax;
+      maj_rec->tr_majorant = (m_sigmaT * -tmax).exp();
+    } else {
+      *terminated          = false;
+      maj_rec->free_flight = distance;
+      maj_rec->tr_majorant = (m_sigmaT * -distance).exp();
+      maj_rec->sigma_a     = m_sigmaA;
+      maj_rec->sigma_s     = m_sigmaS;
+      maj_rec->sigma_n     = Spectrum(.0f);
+      maj_rec->sigma_maj   = m_sigmaT;
+      maj_rec->medium      = this;
+      maj_rec->p           = ray(distance);
+    }
   }
   MTS_DECLARE_CLASS()
 private:

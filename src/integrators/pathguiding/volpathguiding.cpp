@@ -49,7 +49,8 @@ public:
         bool  terminated = false; // Only continue tracking when null-collision occur
         Float tMax       = its.isValid() ? its.t : INFINITY;
 
-        RNG rng{};
+        uint64_t seed = ((uint64_t)rand() << 32) + (uint64_t)rand();
+        RNG      rng{seed};
 
         Spectrum T_maj =
             SampleTrMajorant(medium, ray, tMax, rng, [&](MajorantSamplingRecord majRec) {
@@ -82,6 +83,7 @@ public:
                 r_u *= tr_maj * sigma_s / pdf;
 
                 DirectSamplingRecord dRec{majRec.p, .0f};
+                dRec.refN = Normal(.0f);
 
                 L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, medium, rRec.sampler, r_u,
                                                 medium->getPhaseFunction(), nullptr);
@@ -227,6 +229,8 @@ protected:
                                const Medium *medium, Sampler *sampler, Spectrum r_p,
                                const PhaseFunction *phase = nullptr, const BSDF *bsdf = nullptr,
                                const Intersection *its = nullptr) const {
+    using RNG = RNG_CX;
+
     Spectrum Le{.0f};
     Spectrum scatterVal{.0f};
     Float    scatterPdf = .0f;
@@ -250,9 +254,58 @@ protected:
     }
 
     // TODO Track tr
-    Spectrum tr(1.f), r_l(1.f), r_u(1.f);
-    Ray      shadowRay{dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon), .0f};
-    if (scene->getKDTree()->rayIntersect(shadowRay)) tr = Spectrum(.0f);
+    Spectrum        tr(1.f), r_l(1.f), r_u(1.f);
+    RayDifferential shadowRay{dRec.ref, dRec.d, .0f};
+    shadowRay.mint = Epsilon;
+    shadowRay.maxt = dRec.dist * (1 - ShadowEpsilon);
+
+    uint64_t      seed = ((uint64_t)rand() << 32) + (uint64_t)rand();
+    RNG           rng{seed};
+    const Medium *currentMedium = medium;
+    Intersection  si;
+    while (true) {
+      scene->rayIntersect(shadowRay, si);
+
+      if (si.isValid()) {
+        if (const BSDF *bsdf = si.getBSDF(); !bsdf->isNull()) {
+          // Hit opaque surface
+          tr = Spectrum(.0f);
+          break;
+        }
+      }
+
+      if (currentMedium) {
+        // Accumulate tr
+        Float    tMax  = si.isValid() ? si.t : shadowRay.maxt;
+        Spectrum T_maj = SampleTrMajorant(currentMedium, shadowRay, tMax, rng,
+                                          [&](MajorantSamplingRecord majRec) {
+                                            Spectrum sigma_n   = majRec.sigma_n;
+                                            Spectrum sigma_maj = majRec.sigma_maj;
+                                            Spectrum tr_maj    = majRec.tr_majorant;
+                                            Float    pdf       = tr_maj[0] * sigma_maj[0];
+
+                                            tr *= tr_maj * sigma_n / pdf;
+                                            r_l *= tr_maj * sigma_maj / pdf;
+                                            r_u *= tr_maj * sigma_n / pdf;
+
+                                            // TODO rr
+                                            if (tr.isZero()) return false;
+                                            return true;
+                                          });
+
+        tr *= T_maj / T_maj[0];
+        r_l *= T_maj / T_maj[0];
+        r_u *= T_maj / T_maj[0];
+      }
+
+      shadowRay.o    = si.p;
+      shadowRay.mint = Epsilon;
+      shadowRay.maxt = shadowRay.maxt - si.t;
+
+      if (!si.isValid()) break;
+
+      if (si.isMediumTransition()) currentMedium = si.getTargetMedium(shadowRay.d);
+    }
 
     r_l = r_p;
     r_u = r_p * scatterPdf / dRec.pdf;

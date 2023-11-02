@@ -682,7 +682,8 @@ public:
   //* Sample a free flight according to sigma_maj
   virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const {
-    //
+    Log(EError, "Heterogeneous::sampleTrMajorant no support");
+    exit(1);
   }
 
   MTS_DECLARE_CLASS()

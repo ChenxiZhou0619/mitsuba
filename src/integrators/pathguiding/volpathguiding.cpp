@@ -34,11 +34,15 @@ public:
 
     Spectrum L(.0f), beta(1.f), r_u(1.f), r_l(1.f);
 
-    bool  specular_bounce = false;
-    Point prev_p;
+    Float prev_scatter_pdf = .0f;
+
+    bool specular_bounce = true;
+
+    Point  prev_p;
+    Normal prev_n;
 
     while (true) {
-      rRec.rayIntersect(ray);
+      scene->rayIntersect(ray, its);
 
       if (const Medium *medium = rRec.medium; medium) {
         bool  scattered  = false; // If real collision occur, set it to true
@@ -94,12 +98,14 @@ public:
                 else {
                   scattered       = true;
                   specular_bounce = false;
-                  prev_p          = majRec.p;
 
                   beta     = beta * phaseWeight;
                   r_l      = r_u / phasePdf;
                   ray      = Ray{majRec.p, pRec.wo, .0f};
                   ray.mint = Epsilon;
+
+                  prev_p = majRec.p;
+                  prev_n = Normal(.0f);
                 }
                 return false;
               } else if (scatterType & ECollisionType::Null) {
@@ -131,12 +137,12 @@ public:
 
       if (!its.isValid()) {
         Spectrum Le = scene->evalEnvironment(ray);
-        if (rRec.depth == 0 || specular_bounce) {
+        if (rRec.depth == 1 || specular_bounce) {
           // First hit or pure specular bounce
           L += beta * Le / r_u.average();
         } else {
           // Apply MIS
-          Float p_l = PDF_Nee(scene, prev_p, ray);
+          Float p_l = PDF_Nee(scene, prev_p, prev_n, ray);
           r_l       = r_l * p_l;
           L += beta * Le / (r_u + r_l).average();
         }
@@ -145,14 +151,14 @@ public:
 
       if (const Emitter *emitter = its.shape->getEmitter(); emitter) {
         Spectrum Le = emitter->eval(its, -ray.d);
-        if (rRec.depth == 0 || specular_bounce) {
+        if (rRec.depth == 1 || specular_bounce) {
           // First hit or pure specular bounce
           L += beta * Le / r_u.average();
         } else {
           // Apply MIS
-          Float p_l = PDF_Nee(scene, prev_p, ray, &its);
+          Float p_l = PDF_Nee(scene, prev_p, prev_n, ray, &its);
           r_l       = r_l * p_l;
-          r_l += beta * Le / (r_u + r_l).average();
+          L += beta * Le / (r_u + r_l).average();
         }
       }
 
@@ -168,8 +174,8 @@ public:
 
       DirectSamplingRecord dRec(its);
       if (bsdf->getType() & BSDF::ESmooth)
-        L +=
-            SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium, rRec.sampler, r_u, nullptr, bsdf);
+        L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium, rRec.sampler, r_u,
+                                        nullptr, bsdf, &its);
 
       // BSDF sampling
       BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
@@ -182,10 +188,13 @@ public:
       if (woDotGeoN * Frame::cosTheta(bRec.wo) <= 0 && m_strictNormals) break;
 
       beta *= bsdfWeight;
-      ray             = Ray(its.p, wo, ray.time);
-      prev_p          = its.p;
-      specular_bounce = (bRec.sampledType & (BSDF::EDeltaReflection | BSDF::EDeltaTransmission));
-      r_l             = r_u / bsdfPdf;
+      ray              = Ray(its.p + Epsilon * wo, wo, Epsilon, INFINITY, ray.time);
+      specular_bounce  = (bRec.sampledType & (BSDF::EDeltaReflection | BSDF::EDeltaTransmission));
+      r_l              = r_u / bsdfPdf;
+      prev_scatter_pdf = bsdfPdf;
+
+      prev_p = its.p;
+      prev_n = its.shFrame.n;
 
       if (its.isMediumTransition()) rRec.medium = its.getTargetMedium(ray.d);
 
@@ -223,7 +232,10 @@ protected:
     Float    scatterPdf = .0f;
     Point2   sample     = sampler->next2D();
 
-    Le                     = scene->sampleEmitterDirect(dRec, sample, false);
+    Le = scene->sampleEmitterDirect(dRec, sample, false);
+
+    if (Le.isZero() || dRec.pdf == .0f) return Spectrum(.0f);
+
     const Emitter *emitter = static_cast<const Emitter *>(dRec.object);
 
     if (bsdf && (bsdf->getType() & BSDF::ESmooth)) {
@@ -239,24 +251,29 @@ protected:
 
     // TODO Track tr
     Spectrum tr(1.f), r_l(1.f), r_u(1.f);
-    Ray      shadowRay{dRec.p, dRec.d, .0f};
-    shadowRay.mint = Epsilon;
+    Ray      shadowRay{dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon), .0f};
     if (scene->getKDTree()->rayIntersect(shadowRay)) tr = Spectrum(.0f);
 
-    r_l = r_p * dRec.pdf;
-    r_u = r_p * scatterPdf;
+    r_l = r_p;
+    r_u = r_p * scatterPdf / dRec.pdf;
 
-    if (emitter->isOnSurface() && dRec.measure == ESolidAngle)
+    if (!(emitter->isOnSurface() && dRec.measure == ESolidAngle))
       return scatterVal * tr * Le / r_l.average();
     else
       return scatterVal * tr * Le / (r_l + r_u).average();
   }
 
-  Float PDF_Nee(const Scene *scene, Point prev_p, const RayDifferential &ray,
+  Float PDF_Nee(const Scene *scene, Point prev_p, Normal prev_n, const RayDifferential &ray,
                 const Intersection *its = nullptr) const {
     DirectSamplingRecord dRec;
+    Float                pdf = .0f;
 
     if (its) {
+      dRec.ref  = prev_p;
+      dRec.refN = prev_n;
+
+      if (dot(dRec.refN, ray.d) < 0) dRec.refN *= -1;
+
       dRec.p       = its->p;
       dRec.n       = its->shFrame.n;
       dRec.measure = ESolidAngle;
@@ -264,14 +281,14 @@ protected:
       dRec.object  = its->shape->getEmitter();
       dRec.d       = normalize(dRec.p - prev_p);
       dRec.dist    = (dRec.p - prev_p).length();
-      return scene->pdfEmitterDirect(dRec);
 
+      pdf = scene->pdfEmitterDirect(dRec);
     } else {
       const Emitter *env = scene->getEnvironmentEmitter();
       if (env && env->fillDirectSamplingRecord(dRec, ray)) return scene->pdfEmitterDirect(dRec);
     }
 
-    return .0f;
+    return pdf;
   }
 
 private:

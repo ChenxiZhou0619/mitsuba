@@ -4,3 +4,6 @@
 [submodule "ext/openvdb"]
 	path = ext/openvdb
 	url = git@github.com:AcademySoftwareFoundation/openvdb.git
+[submodule "ext/tbb"]
+	path = ext/tbb
+	url = git@github.com:oneapi-src/oneTBB.git

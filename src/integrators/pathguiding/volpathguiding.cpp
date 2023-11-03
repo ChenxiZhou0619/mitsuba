@@ -25,7 +25,8 @@ public:
     Log(EError, "VolPathguidingTracer serialization is not support\n");
   }
 
-  virtual Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const override {
+  virtual Spectrum Li(const RayDifferential &r,
+                      RadianceQueryRecord   &rRec) const override {
     using RNG = RNG_CX; // Seperate random number generator
 
     const Scene    *scene = rRec.scene;
@@ -42,19 +43,23 @@ public:
     Normal prev_n;
 
     while (true) {
+      if (beta.isZero()) break;
+
       scene->rayIntersect(ray, its);
 
       if (const Medium *medium = rRec.medium; medium) {
-        bool  scattered  = false; // If real collision occur, set it to true
-        bool  terminated = false; // Only continue tracking when null-collision occur
-        Float tMax       = its.isValid() ? its.t : INFINITY;
+        bool scattered = false; // If real collision occur, set it to true
+        bool terminated =
+            false; // Only continue tracking when null-collision occur
+        Float tMax = its.isValid() ? its.t : INFINITY;
 
         uint64_t seed = ((uint64_t)rand() << 32) + (uint64_t)rand();
         RNG      rng{seed};
 
-        Spectrum T_maj =
-            SampleTrMajorant(medium, ray, tMax, rng, [&](MajorantSamplingRecord majRec) {
-              //! Notice : This call back should return whether to continue majorant tracking
+        Spectrum T_maj = SampleTrMajorant(
+            medium, ray, tMax, rng, [&](MajorantSamplingRecord majRec) {
+              //! Notice : This call back should return whether to continue
+              //! majorant tracking
               // TODO Add Volumetric Emission
 
               // Sample a type of collision
@@ -70,7 +75,8 @@ public:
                 terminated = true;
                 return false;
               } else if (scatterType & ECollisionType::Scatter) {
-                //* A real scatter occurs, volumetric nee and phase sampling should be performed
+                //* A real scatter occurs, volumetric nee and phase sampling
+                // should be performed
 
                 if (rRec.depth++ >= m_maxDepth) {
                   terminated = true;
@@ -85,12 +91,14 @@ public:
                 DirectSamplingRecord dRec{majRec.p, .0f};
                 dRec.refN = Normal(.0f);
 
-                L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, medium, rRec.sampler, r_u,
-                                                medium->getPhaseFunction(), nullptr);
+                L += beta * SampleVolumetricNEE(
+                                scene, dRec, -ray.d, medium, rRec.sampler, r_u,
+                                medium->getPhaseFunction(), nullptr);
 
                 // sample a new direction
-                const PhaseFunction        *phase = medium->getPhaseFunction();
-                MediumSamplingRecord        mRec; // TODO mRec will be used in some phase
+                const PhaseFunction *phase = medium->getPhaseFunction();
+                MediumSamplingRecord
+                    mRec; // TODO mRec will be used in some phase
                 PhaseFunctionSamplingRecord pRec{mRec, -ray.d};
                 Float                       phasePdf;
                 Float phaseWeight = phase->sample(pRec, phasePdf, rRec.sampler);
@@ -116,6 +124,7 @@ public:
 
                 Float pdf = tr_maj[0] * sigma_n[0];
                 beta *= tr_maj * sigma_n / pdf;
+
                 r_u *= tr_maj * sigma_n / pdf;
                 r_l *= tr_maj * sigma_maj / pdf;
 
@@ -176,13 +185,13 @@ public:
 
       DirectSamplingRecord dRec(its);
       if (bsdf->getType() & BSDF::ESmooth)
-        L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium, rRec.sampler, r_u,
-                                        nullptr, bsdf, &its);
+        L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium,
+                                        rRec.sampler, r_u, nullptr, bsdf, &its);
 
       // BSDF sampling
       BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
       Float              bsdfPdf;
-      Spectrum           bsdfWeight = bsdf->sample(bRec, bsdfPdf, rRec.nextSample2D());
+      Spectrum bsdfWeight = bsdf->sample(bRec, bsdfPdf, rRec.nextSample2D());
       if (bsdfWeight.isZero()) break;
 
       const Vector wo        = its.toWorld(bRec.wo);
@@ -190,8 +199,9 @@ public:
       if (woDotGeoN * Frame::cosTheta(bRec.wo) <= 0 && m_strictNormals) break;
 
       beta *= bsdfWeight;
-      ray              = Ray(its.p + Epsilon * wo, wo, Epsilon, INFINITY, ray.time);
-      specular_bounce  = (bRec.sampledType & (BSDF::EDeltaReflection | BSDF::EDeltaTransmission));
+      ray = Ray(its.p + Epsilon * wo, wo, Epsilon, INFINITY, ray.time);
+      specular_bounce  = (bRec.sampledType &
+                         (BSDF::EDeltaReflection | BSDF::EDeltaTransmission));
       r_l              = r_u / bsdfPdf;
       prev_scatter_pdf = bsdfPdf;
 
@@ -213,7 +223,8 @@ public:
 protected:
   enum ECollisionType { Absorb = 0b0001, Scatter = 0b0010, Null = 0b0100 };
 
-  ECollisionType SampleCollision(const Spectrum &sigma_a, const Spectrum &sigma_s,
+  ECollisionType SampleCollision(const Spectrum &sigma_a,
+                                 const Spectrum &sigma_s,
                                  const Spectrum &sigma_n, Float u) const {
     // Only first channel here
     Float sum = sigma_a[0] + sigma_s[0] + sigma_n[0];
@@ -225,10 +236,12 @@ protected:
     return ECollisionType::Null;
   }
 
-  Spectrum SampleVolumetricNEE(const Scene *scene, DirectSamplingRecord &dRec, const Vector &wi,
-                               const Medium *medium, Sampler *sampler, Spectrum r_p,
-                               const PhaseFunction *phase = nullptr, const BSDF *bsdf = nullptr,
-                               const Intersection *its = nullptr) const {
+  Spectrum SampleVolumetricNEE(const Scene *scene, DirectSamplingRecord &dRec,
+                               const Vector &wi, const Medium *medium,
+                               Sampler *sampler, Spectrum r_p,
+                               const PhaseFunction *phase = nullptr,
+                               const BSDF          *bsdf  = nullptr,
+                               const Intersection  *its   = nullptr) const {
     using RNG = RNG_CX;
 
     Spectrum Le{.0f};
@@ -253,7 +266,6 @@ protected:
       scatterPdf = phase->pdf(pRec);
     }
 
-    // TODO Track tr
     Spectrum        tr(1.f), r_l(1.f), r_u(1.f);
     RayDifferential shadowRay{dRec.ref, dRec.d, .0f};
     shadowRay.mint = Epsilon;
@@ -276,27 +288,29 @@ protected:
 
       if (currentMedium) {
         // Accumulate tr
-        Float    tMax  = si.isValid() ? si.t : shadowRay.maxt;
-        Spectrum T_maj = SampleTrMajorant(currentMedium, shadowRay, tMax, rng,
-                                          [&](MajorantSamplingRecord majRec) {
-                                            Spectrum sigma_n   = majRec.sigma_n;
-                                            Spectrum sigma_maj = majRec.sigma_maj;
-                                            Spectrum tr_maj    = majRec.tr_majorant;
-                                            Float    pdf       = tr_maj[0] * sigma_maj[0];
+        Float    tMax = si.isValid() ? si.t : shadowRay.maxt;
+        Spectrum T_maj =
+            SampleTrMajorant(currentMedium, shadowRay, tMax, rng,
+                             [&](MajorantSamplingRecord majRec) {
+                               Spectrum sigma_n   = majRec.sigma_n;
+                               Spectrum sigma_maj = majRec.sigma_maj;
+                               Spectrum tr_maj    = majRec.tr_majorant;
+                               Float    pdf       = tr_maj[0] * sigma_maj[0];
 
-                                            tr *= tr_maj * sigma_n / pdf;
-                                            r_l *= tr_maj * sigma_maj / pdf;
-                                            r_u *= tr_maj * sigma_n / pdf;
+                               tr *= tr_maj * sigma_n / pdf;
+                               r_l *= tr_maj * sigma_maj / pdf;
+                               r_u *= tr_maj * sigma_n / pdf;
 
-                                            // TODO rr
-                                            if (tr.isZero()) return false;
-                                            return true;
-                                          });
+                               if (tr.isZero()) return false;
+                               return true;
+                             });
 
         tr *= T_maj / T_maj[0];
         r_l *= T_maj / T_maj[0];
         r_u *= T_maj / T_maj[0];
       }
+
+      if (tr.isZero()) break;
 
       shadowRay.o    = si.p;
       shadowRay.mint = Epsilon;
@@ -304,7 +318,8 @@ protected:
 
       if (!si.isValid()) break;
 
-      if (si.isMediumTransition()) currentMedium = si.getTargetMedium(shadowRay.d);
+      if (si.isMediumTransition())
+        currentMedium = si.getTargetMedium(shadowRay.d);
     }
 
     r_l = r_p;
@@ -316,8 +331,9 @@ protected:
       return scatterVal * tr * Le / (r_l + r_u).average();
   }
 
-  Float PDF_Nee(const Scene *scene, Point prev_p, Normal prev_n, const RayDifferential &ray,
-                const Intersection *its = nullptr) const {
+  Float PDF_Nee(const Scene *scene, Point prev_p, Normal prev_n,
+                const RayDifferential &ray,
+                const Intersection    *its = nullptr) const {
     DirectSamplingRecord dRec;
     Float                pdf = .0f;
 
@@ -338,7 +354,8 @@ protected:
       pdf = scene->pdfEmitterDirect(dRec);
     } else {
       const Emitter *env = scene->getEnvironmentEmitter();
-      if (env && env->fillDirectSamplingRecord(dRec, ray)) return scene->pdfEmitterDirect(dRec);
+      if (env && env->fillDirectSamplingRecord(dRec, ray))
+        return scene->pdfEmitterDirect(dRec);
     }
 
     return pdf;

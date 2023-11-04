@@ -177,7 +177,8 @@ public:
         tracker.marchForward(step);
 
         Point scatterP = ray(tracker.t);
-        Float density  = SampleDensity(scatterP);
+        // Clamp the density
+        Float density = std::min(SampleDensity(scatterP), majorantDensity);
 
         maj_rec->sigma_maj   = majorantSigmaT;
         maj_rec->sigma_a     = density * m_sigmaA;

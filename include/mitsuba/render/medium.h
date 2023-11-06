@@ -156,10 +156,13 @@ public:
    * [mint, maxt] associated with the ray. It is assumed
    * that the ray has a normalized direction value.
    */
-  virtual Spectrum evalTransmittance(const Ray &ray, Sampler *sampler = NULL) const = 0;
+  virtual Spectrum evalTransmittance(const Ray &ray,
+                                     Sampler   *sampler = NULL) const = 0;
 
   /// Return the phase function of this medium
-  inline const PhaseFunction *getPhaseFunction() const { return m_phaseFunction.get(); }
+  inline const PhaseFunction *getPhaseFunction() const {
+    return m_phaseFunction.get();
+  }
 
   /// Determine whether the medium is homogeneous
   virtual bool isHomogeneous() const = 0;
@@ -199,7 +202,8 @@ public:
   // =============================================================
 
   //* Sample a free flight according to sigma_maj
-  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax, bool *terminated,
+  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
+                                bool                   *terminated,
                                 MajorantSamplingRecord *maj_rec) const = 0;
 
   MTS_DECLARE_CLASS()
@@ -221,14 +225,15 @@ protected:
 };
 // TODO
 template <typename F>
-Spectrum SampleTrMajorant(const Medium *medium, RayDifferential ray, Float tmax, RNG_CX &rng,
-                          F callback) {
+Spectrum SampleTrMajorant(const Medium *medium, RayDifferential ray, Float tmax,
+                          RNG_CX &rng, F callback) {
   MajorantSamplingRecord maj_rec;
   bool                   terminated = false;
   while (true) {
     // Sample majorant transmittance
     // Terminate if pass through the media
-    medium->sampleTrMajorant(ray, rng.randomFloat(), tmax, &terminated, &maj_rec);
+    medium->sampleTrMajorant(ray, rng.randomFloat(), tmax, &terminated,
+                             &maj_rec);
     if (terminated) return maj_rec.tr_majorant;
 
     // Sample the collision type according to callback

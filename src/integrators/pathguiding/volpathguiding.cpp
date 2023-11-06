@@ -29,6 +29,9 @@ public:
                       RadianceQueryRecord   &rRec) const override {
     using RNG = RNG_CX; // Seperate random number generator
 
+    // Uniformly sample a hero wave length
+    const uint32_t heroChannel = SampleHeroChannel(rRec.nextSample1D());
+
     const Scene    *scene = rRec.scene;
     Intersection   &its   = rRec.its;
     RayDifferential ray(r);
@@ -44,7 +47,8 @@ public:
 
     while (true) {
       if (beta.isZero()) break;
-
+      // Set the hero channel
+      ray.heroChannel = heroChannel;
       scene->rayIntersect(ray, its);
 
       if (const Medium *medium = rRec.medium; medium) {
@@ -68,8 +72,8 @@ public:
               Spectrum sigma_n = majRec.sigma_n;
               Spectrum tr_maj  = majRec.tr_majorant;
 
-              ECollisionType scatterType =
-                  SampleCollision(sigma_a, sigma_s, sigma_n, rng.randomFloat());
+              ECollisionType scatterType = SampleCollision(
+                  sigma_a, sigma_s, sigma_n, rng.randomFloat(), heroChannel);
 
               if (scatterType & ECollisionType::Absorb) {
                 terminated = true;
@@ -84,16 +88,17 @@ public:
                 }
 
                 // update the throughput
-                Float pdf = tr_maj[0] * sigma_s[0];
+                Float pdf = tr_maj[heroChannel] * sigma_s[heroChannel];
                 beta *= tr_maj * sigma_s / pdf;
                 r_u *= tr_maj * sigma_s / pdf;
 
                 DirectSamplingRecord dRec{majRec.p, .0f};
                 dRec.refN = Normal(.0f);
 
-                L += beta * SampleVolumetricNEE(
-                                scene, dRec, -ray.d, medium, rRec.sampler, r_u,
-                                medium->getPhaseFunction(), nullptr);
+                L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, medium,
+                                                rRec.sampler, r_u, heroChannel,
+                                                medium->getPhaseFunction(),
+                                                nullptr);
 
                 // sample a new direction
                 const PhaseFunction *phase = medium->getPhaseFunction();
@@ -122,7 +127,7 @@ public:
                 //* A null scatter occurs, just keep tracking
                 Spectrum sigma_maj = majRec.sigma_maj;
 
-                Float pdf = tr_maj[0] * sigma_n[0];
+                Float pdf = tr_maj[heroChannel] * sigma_n[heroChannel];
                 beta *= tr_maj * sigma_n / pdf;
 
                 r_u *= tr_maj * sigma_n / pdf;
@@ -141,9 +146,9 @@ public:
         if (terminated) break;
         if (scattered) continue;
 
-        beta *= T_maj / T_maj[0];
-        r_u *= T_maj / T_maj[0];
-        r_l *= T_maj / T_maj[0];
+        beta *= T_maj / T_maj[heroChannel];
+        r_u *= T_maj / T_maj[heroChannel];
+        r_l *= T_maj / T_maj[heroChannel];
       }
 
       if (!its.isValid()) {
@@ -186,7 +191,8 @@ public:
       DirectSamplingRecord dRec(its);
       if (bsdf->getType() & BSDF::ESmooth)
         L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium,
-                                        rRec.sampler, r_u, nullptr, bsdf, &its);
+                                        rRec.sampler, r_u, heroChannel, nullptr,
+                                        bsdf, &its);
 
       // BSDF sampling
       BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
@@ -225,20 +231,26 @@ protected:
 
   ECollisionType SampleCollision(const Spectrum &sigma_a,
                                  const Spectrum &sigma_s,
-                                 const Spectrum &sigma_n, Float u) const {
+                                 const Spectrum &sigma_n, Float u,
+                                 uint32_t channel) const {
     // Only first channel here
-    Float sum = sigma_a[0] + sigma_s[0] + sigma_n[0];
-    Float P_a = sigma_a[0] / sum;
-    Float P_s = sigma_s[0] / sum;
+    Float sum = sigma_a[channel] + sigma_s[channel] + sigma_n[channel];
+    Float P_a = sigma_a[channel] / sum;
+    Float P_s = sigma_s[channel] / sum;
 
     if (u < P_a) return ECollisionType::Absorb;
     if (u < P_a + P_s) return ECollisionType::Scatter;
     return ECollisionType::Null;
   }
 
+  uint32_t SampleHeroChannel(Float u) const {
+    return math::clamp((int)(u * 3), 0, 2);
+  }
+
   Spectrum SampleVolumetricNEE(const Scene *scene, DirectSamplingRecord &dRec,
                                const Vector &wi, const Medium *medium,
                                Sampler *sampler, Spectrum r_p,
+                               const uint32_t       heroChannel,
                                const PhaseFunction *phase = nullptr,
                                const BSDF          *bsdf  = nullptr,
                                const Intersection  *its   = nullptr) const {
@@ -268,14 +280,16 @@ protected:
 
     Spectrum        tr(1.f), r_l(1.f), r_u(1.f);
     RayDifferential shadowRay{dRec.ref, dRec.d, .0f};
-    shadowRay.mint = Epsilon;
-    shadowRay.maxt = dRec.dist * (1 - ShadowEpsilon);
+    shadowRay.mint        = Epsilon;
+    shadowRay.maxt        = dRec.dist * (1 - ShadowEpsilon);
+    shadowRay.heroChannel = heroChannel;
 
     uint64_t      seed = ((uint64_t)rand() << 32) + (uint64_t)rand();
     RNG           rng{seed};
     const Medium *currentMedium = medium;
     Intersection  si;
     while (true) {
+
       scene->rayIntersect(shadowRay, si);
 
       if (si.isValid()) {
@@ -295,7 +309,8 @@ protected:
                                Spectrum sigma_n   = majRec.sigma_n;
                                Spectrum sigma_maj = majRec.sigma_maj;
                                Spectrum tr_maj    = majRec.tr_majorant;
-                               Float    pdf       = tr_maj[0] * sigma_maj[0];
+                               Float    pdf =
+                                   tr_maj[heroChannel] * sigma_maj[heroChannel];
 
                                tr *= tr_maj * sigma_n / pdf;
                                r_l *= tr_maj * sigma_maj / pdf;
@@ -305,9 +320,9 @@ protected:
                                return true;
                              });
 
-        tr *= T_maj / T_maj[0];
-        r_l *= T_maj / T_maj[0];
-        r_u *= T_maj / T_maj[0];
+        tr *= T_maj / T_maj[heroChannel];
+        r_l *= T_maj / T_maj[heroChannel];
+        r_u *= T_maj / T_maj[heroChannel];
       }
 
       if (tr.isZero()) break;

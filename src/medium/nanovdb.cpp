@@ -155,9 +155,9 @@ public:
                    bool                   *terminated,
                    MajorantSamplingRecord *maj_rec) const override {
     // Check if the ray intersect m_bounds, if so, reset the ray origin and tmax
-
-    Float    sampledOpacityThick = -math::fastlog(1 - u);
-    Spectrum accumulatedThick    = Spectrum{.0f};
+    const uint32_t heroChannel         = ray.heroChannel;
+    Float          sampledOpacityThick = -math::fastlog(1 - u);
+    Spectrum       accumulatedThick    = Spectrum{.0f};
 
     // The tracker tracks the majorant grid
     DDATracker tracker = GetTracker(ray, tmax);
@@ -167,12 +167,12 @@ public:
       Float majorantDensity =
           m_majGrid->at(segVoxel[0], segVoxel[1], segVoxel[2]);
       Spectrum majorantSigmaT = majorantDensity * m_sigmaT;
-      Float    segThick       = segDistance * majorantSigmaT[0];
+      Float    segThick       = segDistance * majorantSigmaT[heroChannel];
 
-      if (segThick + accumulatedThick[0] > sampledOpacityThick) {
+      if (segThick + accumulatedThick[heroChannel] > sampledOpacityThick) {
         // Reach the sampled distance
-        Float step =
-            (sampledOpacityThick - accumulatedThick[0]) / majorantSigmaT[0];
+        Float step = (sampledOpacityThick - accumulatedThick[heroChannel]) /
+                     majorantSigmaT[heroChannel];
         accumulatedThick += step * majorantSigmaT;
         tracker.marchForward(step);
 

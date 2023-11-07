@@ -152,12 +152,17 @@ public:
 
   virtual void
   sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
-                   bool                   *terminated,
+                   ETrackingType type, bool *terminated,
                    MajorantSamplingRecord *maj_rec) const override {
-    // Check if the ray intersect m_bounds, if so, reset the ray origin and tmax
-    const uint32_t heroChannel         = ray.heroChannel;
-    Float          sampledOpacityThick = -math::fastlog(1 - u);
-    Spectrum       accumulatedThick    = Spectrum{.0f};
+
+    //! Notice, different tracking type using different path-sampling
+    //! coefficients
+
+    const uint32_t heroChannel = ray.heroChannel;
+
+    Float    sampledOpacityThick  = -math::fastlog(1 - u);
+    Float    accumulatedThick     = .0f;
+    Spectrum spectralOpacityThick = Spectrum{.0f};
 
     // The tracker tracks the majorant grid
     DDATracker tracker = GetTracker(ray, tmax);
@@ -167,24 +172,53 @@ public:
       Float majorantDensity =
           m_majGrid->at(segVoxel[0], segVoxel[1], segVoxel[2]);
       Spectrum majorantSigmaT = majorantDensity * m_sigmaT;
-      Float    segThick       = segDistance * majorantSigmaT[heroChannel];
 
-      if (segThick + accumulatedThick[heroChannel] > sampledOpacityThick) {
+      Float pathSamplingCofficient;
+      if (type & ETrackingType::ENaiveDeltaTracking) {
+        // Just use the extinction cofficient of hero channel
+        pathSamplingCofficient = majorantSigmaT[heroChannel];
+      } else if (type & ETrackingType::ESpectralTracking) {
+        // Use the extinction cofficient among all channels
+        pathSamplingCofficient = majorantSigmaT.max();
+      } else {
+        Log(EError, "Shouldn't arrive here");
+        exit(1);
+      }
+
+      Float segThick = segDistance * pathSamplingCofficient;
+
+      if (segThick + accumulatedThick > sampledOpacityThick) {
         // Reach the sampled distance
-        Float step = (sampledOpacityThick - accumulatedThick[heroChannel]) /
-                     majorantSigmaT[heroChannel];
-        accumulatedThick += step * majorantSigmaT;
+        Float step =
+            (sampledOpacityThick - accumulatedThick) / pathSamplingCofficient;
+
+        spectralOpacityThick += step * majorantSigmaT;
         tracker.marchForward(step);
 
         Point scatterP = ray(tracker.t);
         // Clamp the density
         Float density = std::min(SampleDensity(scatterP), majorantDensity);
 
-        maj_rec->sigma_maj   = majorantSigmaT;
-        maj_rec->sigma_a     = density * m_sigmaA;
-        maj_rec->sigma_s     = density * m_sigmaS;
-        maj_rec->sigma_n     = (majorantDensity - density) * m_sigmaT;
-        maj_rec->tr_majorant = (-accumulatedThick).exp();
+        maj_rec->sigma_maj = majorantSigmaT;
+        maj_rec->sigma_a   = density * m_sigmaA;
+        maj_rec->sigma_s   = density * m_sigmaS;
+        if (type & ETrackingType::ENaiveDeltaTracking) {
+          // Just use the extinction cofficient of hero channel
+          maj_rec->sigma_n     = (majorantDensity - density) * m_sigmaT;
+          maj_rec->tr_majorant = (-spectralOpacityThick).exp();
+
+        } else if (type & ETrackingType::ESpectralTracking) {
+          // Use the extinction cofficient among all channels
+          maj_rec->sigma_n =
+              Spectrum{pathSamplingCofficient} - density * m_sigmaT;
+          maj_rec->tr_majorant = Spectrum{std::exp(-sampledOpacityThick)};
+        } else {
+          Log(EError, "Shouldn't arrive here");
+          exit(1);
+        }
+
+        maj_rec->pdf_flight =
+            std::exp(-sampledOpacityThick) * pathSamplingCofficient;
 
         maj_rec->free_flight = tracker.t;
         maj_rec->p           = ray(maj_rec->free_flight);
@@ -195,16 +229,30 @@ public:
       }
 
       // Accumulate the current segment and march to next voxel
-      accumulatedThick += segDistance * majorantSigmaT;
+      accumulatedThick += segDistance * pathSamplingCofficient;
+      spectralOpacityThick += segDistance * majorantSigmaT;
       tracker.marchNext();
     }
 
     // No nextSeg avaliable, i.e. reach the tmax
-    maj_rec->tr_majorant = (-accumulatedThick).exp();
 
+    if (type & ETrackingType::ENaiveDeltaTracking) {
+      maj_rec->tr_majorant = (-spectralOpacityThick).exp();
+    } else if (type & ETrackingType::ESpectralTracking) {
+      maj_rec->tr_majorant = Spectrum{std::exp(-accumulatedThick)};
+    } else {
+      Log(EError, "Shouldn't arrive here");
+      exit(1);
+    }
+
+    maj_rec->pdf_flight  = std::exp(-accumulatedThick);
     maj_rec->free_flight = tmax;
     maj_rec->p           = ray(maj_rec->free_flight);
     *terminated          = true;
+
+    if (maj_rec->pdf_flight == .0f) {
+      printf("Stop here 6\n");
+    }
   }
 
   MTS_DECLARE_CLASS()

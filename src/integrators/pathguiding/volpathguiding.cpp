@@ -61,7 +61,8 @@ public:
         RNG      rng{seed};
 
         Spectrum T_maj = SampleTrMajorant(
-            medium, ray, tMax, rng, [&](MajorantSamplingRecord majRec) {
+            medium, ray, tMax, rng, ETrackingType::ENaiveDeltaTracking,
+            [&](MajorantSamplingRecord majRec) {
               //! Notice : This call back should return whether to continue
               //! majorant tracking
               // TODO Add Volumetric Emission
@@ -305,6 +306,7 @@ protected:
         Float    tMax = si.isValid() ? si.t : shadowRay.maxt;
         Spectrum T_maj =
             SampleTrMajorant(currentMedium, shadowRay, tMax, rng,
+                             ETrackingType::ENaiveDeltaTracking,
                              [&](MajorantSamplingRecord majRec) {
                                Spectrum sigma_n   = majRec.sigma_n;
                                Spectrum sigma_maj = majRec.sigma_maj;
@@ -337,8 +339,8 @@ protected:
         currentMedium = si.getTargetMedium(shadowRay.d);
     }
 
-    r_l = r_p;
-    r_u = r_p * scatterPdf / dRec.pdf;
+    r_l *= r_p;
+    r_u *= r_p * scatterPdf / dRec.pdf;
 
     if (!(emitter->isOnSurface() && dRec.measure == ESolidAngle))
       return scatterVal * tr * Le / r_l.average();

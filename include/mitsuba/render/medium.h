@@ -98,12 +98,18 @@ public:
 
 struct MTS_EXPORT_RENDER MajorantSamplingRecord {
   Float         free_flight;
+  Float         pdf_flight;
   Spectrum      tr_majorant;
   Spectrum      sigma_maj, sigma_a, sigma_s, sigma_n;
   Point3        p;
   const Medium *medium = nullptr;
 
   const PhaseFunction *getPhaseFunction() const;
+};
+
+enum ETrackingType {
+  ENaiveDeltaTracking = 1 << 0,
+  ESpectralTracking   = 1 << 1,
 };
 
 /** \brief Abstract participating medium
@@ -203,7 +209,7 @@ public:
 
   //* Sample a free flight according to sigma_maj
   virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
-                                bool                   *terminated,
+                                ETrackingType type, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const = 0;
 
   MTS_DECLARE_CLASS()
@@ -223,18 +229,25 @@ protected:
   Spectrum           m_sigmaS;
   Spectrum           m_sigmaT;
 };
-// TODO
+
 template <typename F>
 Spectrum SampleTrMajorant(const Medium *medium, RayDifferential ray, Float tmax,
-                          RNG_CX &rng, F callback) {
+                          RNG_CX &rng, ETrackingType type, F callback,
+                          Float *pdf = nullptr) {
   MajorantSamplingRecord maj_rec;
   bool                   terminated = false;
   while (true) {
     // Sample majorant transmittance
     // Terminate if pass through the media
-    medium->sampleTrMajorant(ray, rng.randomFloat(), tmax, &terminated,
+    medium->sampleTrMajorant(ray, rng.randomFloat(), tmax, type, &terminated,
                              &maj_rec);
-    if (terminated) return maj_rec.tr_majorant;
+    if (terminated) {
+      if (pdf) *pdf = maj_rec.pdf_flight;
+      if (pdf && *pdf == .0f) {
+        printf("Stop here 7\n");
+      }
+      return maj_rec.tr_majorant;
+    }
 
     // Sample the collision type according to callback
     bool continue_track = callback(maj_rec);

@@ -480,6 +480,8 @@ public:
   /// Set the parent object
   virtual void setParent(ConfigurableObject *parent);
 
+  virtual bool isNull() const { return false; }
+
   //! @}
   // =============================================================
 

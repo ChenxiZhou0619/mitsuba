@@ -35,14 +35,17 @@ MTS_NAMESPACE_BEGIN
 
 #if defined(HETVOL_STATISTICS)
 static StatsCounter avgNewtonIterations("Heterogeneous volume",
-                                        "Avg. # of Newton-Bisection iterations", EAverage);
-static StatsCounter avgRayMarchingStepsTransmittance("Heterogeneous volume",
-                                                     "Avg. # of ray marching steps (transmittance)",
-                                                     EAverage);
-static StatsCounter avgRayMarchingStepsSampling("Heterogeneous volume",
+                                        "Avg. # of Newton-Bisection iterations",
+                                        EAverage);
+static StatsCounter avgRayMarchingStepsTransmittance(
+    "Heterogeneous volume", "Avg. # of ray marching steps (transmittance)",
+    EAverage);
+static StatsCounter
+                    avgRayMarchingStepsSampling("Heterogeneous volume",
                                                 "Avg. # of ray marching steps (sampling)",
                                                 EAverage);
-static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits", EPercentage);
+static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits",
+                               EPercentage);
 #endif
 
 /*!\plugin{heterogeneous}{Heterogeneous participating medium}
@@ -55,8 +58,8 @@ static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits", 
  *             \item \code{simpson}: Sampling is done by inverting a
  *             deterministic quadrature rule based on composite
  *             Simpson integration over small ray segments. Benefits
- *             from the use of good sample generators (e.g. \pluginref{ldsampler}).
- *             \item \code{woodcock}: Generate samples using
+ *             from the use of good sample generators (e.g.
+ * \pluginref{ldsampler}). \item \code{woodcock}: Generate samples using
  *             Woodcock tracking. This is usually faster and
  *             always unbiased, but has the disadvantages of not benefiting
  *             from good sample generators and not providing
@@ -78,9 +81,9 @@ static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits", 
  *         local particle orientations throughout the medium
  *     }
  *     \parameter{scale}{\Float}{
- *         Optional scale factor that will be applied to the \code{density} parameter.
- *         Provided for convenience when accomodating data based on different units,
- *         or to simply tweak the density of the medium. \default{1}
+ *         Optional scale factor that will be applied to the \code{density}
+ * parameter. Provided for convenience when accomodating data based on different
+ * units, or to simply tweak the density of the medium. \default{1}
  *     }
  *     \parameter{\Unnamed}{\Phase}{
  *          A nested phase function that describes the directional
@@ -95,7 +98,8 @@ static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits", 
  *     \medrendering{200}{medium_heterogeneous_density_200}
  *     \medrendering{1000}{medium_heterogeneous_density_1000}
  *     \vspace{-2mm}
- *     \caption{Renderings of an index-matched medium using different scale factors
+ *     \caption{Renderings of an index-matched medium using different scale
+ * factors
  * (\lstref{hetvolume})}
  * }
  *
@@ -111,10 +115,11 @@ static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits", 
  * enforcing a spectrally uniform value of \code{sigmaT}, which must be
  * provided using a nested scalar-valued volume named \code{density}.
  *
- * Another nested spectrum-valued \code{albedo} volume must also be provided, which is
- * used to compute the scattering coefficient $\sigma_s$ using the expression
- * $\sigma_s = \code{scale} * \code{density} * \code{albedo}$ (i.e. 'albedo' contains the
- * single-scattering albedo of the medium.
+ * Another nested spectrum-valued \code{albedo} volume must also be provided,
+ * which is used to compute the scattering coefficient $\sigma_s$ using the
+ * expression
+ * $\sigma_s = \code{scale} * \code{density} * \code{albedo}$ (i.e. 'albedo'
+ * contains the single-scattering albedo of the medium.
  *
  * Optionally, one can also provide an vector-valued \code{orientation} volume,
  * which contains local particle orientation that will be passed to
@@ -123,7 +128,8 @@ static StatsCounter earlyExits("Heterogeneous volume", "Number of early exits", 
  *
  * \vspace{4mm}
  *
- * \begin{xml}[label=lst:hetvolume,caption=A simple heterogeneous medium backed by a grid volume]
+ * \begin{xml}[label=lst:hetvolume,caption=A simple heterogeneous medium backed
+ * by a grid volume]
  * <!-- Declare a heterogeneous participating medium named 'smoke' -->
  * <medium type="heterogeneous" id="smoke">
  *     <string name="method" value="simpson"/>
@@ -186,15 +192,17 @@ public:
     m_stepSize = props.getFloat("stepSize", 0);
     m_scale    = props.getFloat("scale", 1);
     if (props.hasProperty("sigmaS") || props.hasProperty("sigmaA"))
-      Log(EError, "The 'sigmaS' and 'sigmaA' properties are only supported by "
-                  "homogeneous media. Please use nested volume instances to supply "
-                  "these parameters");
+      Log(EError,
+          "The 'sigmaS' and 'sigmaA' properties are only supported by "
+          "homogeneous media. Please use nested volume instances to supply "
+          "these parameters");
 
     if (props.hasProperty("densityMultiplier"))
-      Log(EError,
-          "The 'densityMultiplier' parameter has been deprecated and is now called 'scale'.");
+      Log(EError, "The 'densityMultiplier' parameter has been deprecated and "
+                  "is now called 'scale'.");
 
-    std::string method = boost::to_lower_copy(props.getString("method", "woodcock"));
+    std::string method =
+        boost::to_lower_copy(props.getString("method", "woodcock"));
     if (method == "woodcock")
       m_method = EWoodcockTracking;
     else if (method == "simpson")
@@ -204,13 +212,15 @@ public:
   }
 
   /* Unserialize from a binary data stream */
-  HeterogeneousMedium(Stream *stream, InstanceManager *manager) : Medium(stream, manager) {
-    m_method      = (EIntegrationMethod)stream->readInt();
-    m_scale       = stream->readFloat();
-    m_density     = static_cast<VolumeDataSource *>(manager->getInstance(stream));
-    m_albedo      = static_cast<VolumeDataSource *>(manager->getInstance(stream));
-    m_orientation = static_cast<VolumeDataSource *>(manager->getInstance(stream));
-    m_stepSize    = stream->readFloat();
+  HeterogeneousMedium(Stream *stream, InstanceManager *manager)
+      : Medium(stream, manager) {
+    m_method  = (EIntegrationMethod)stream->readInt();
+    m_scale   = stream->readFloat();
+    m_density = static_cast<VolumeDataSource *>(manager->getInstance(stream));
+    m_albedo  = static_cast<VolumeDataSource *>(manager->getInstance(stream));
+    m_orientation =
+        static_cast<VolumeDataSource *>(manager->getInstance(stream));
+    m_stepSize = stream->readFloat();
     configure();
   }
 
@@ -229,8 +239,9 @@ public:
     Medium::configure();
     if (m_density.get() == NULL) Log(EError, "No density specified!");
     if (m_albedo.get() == NULL) Log(EError, "No albedo specified!");
-    m_densityAABB       = m_density->getAABB();
-    m_anisotropicMedium = m_phaseFunction->needsDirectionallyVaryingCoefficients();
+    m_densityAABB = m_density->getAABB();
+    m_anisotropicMedium =
+        m_phaseFunction->needsDirectionallyVaryingCoefficients();
 
     /* Assumes that the density medium does not
        contain values greater than one! */
@@ -240,12 +251,14 @@ public:
 
     if (m_stepSize == 0) {
       m_stepSize = std::min(m_density->getStepSize(), m_albedo->getStepSize());
-      if (m_orientation != NULL) m_stepSize = std::min(m_stepSize, m_orientation->getStepSize());
+      if (m_orientation != NULL)
+        m_stepSize = std::min(m_stepSize, m_orientation->getStepSize());
 
       if (m_stepSize == std::numeric_limits<Float>::infinity())
-        Log(EError, "Unable to infer a suitable step size for deterministic "
-                    "integration, please specify one manually using the 'stepSize' "
-                    "parameter.");
+        Log(EError,
+            "Unable to infer a suitable step size for deterministic "
+            "integration, please specify one manually using the 'stepSize' "
+            "parameter.");
     }
 
     if (m_anisotropicMedium && m_orientation.get() == NULL)
@@ -321,11 +334,12 @@ public:
 #endif
 
     /* Perform lookups at the first and last node */
-    Float integratedDensity = lookupDensity(p, ray.d) + lookupDensity(pLast, ray.d);
+    Float integratedDensity =
+        lookupDensity(p, ray.d) + lookupDensity(pLast, ray.d);
 
 #if defined(HETVOL_EARLY_EXIT)
     const Float stopAfterDensity = -math::fastlog(Epsilon);
-    const Float stopValue        = stopAfterDensity * 3.0f / (stepSize * m_scale);
+    const Float stopValue = stopAfterDensity * 3.0f / (stepSize * m_scale);
 #endif
 
     p += increment;
@@ -406,8 +420,9 @@ public:
    *    When no solution can be found in [ray.mint, ray.maxt] the
    *    function returns \c false.
    */
-  bool invertDensityIntegral(const Ray &ray, Float desiredDensity, Float &integratedDensity,
-                             Float &t, Float &densityAtMinT, Float &densityAtT) const {
+  bool invertDensityIntegral(const Ray &ray, Float desiredDensity,
+                             Float &integratedDensity, Float &t,
+                             Float &densityAtMinT, Float &densityAtT) const {
     integratedDensity = densityAtMinT = densityAtT = 0.0f;
 
     /* Determine the ray segment, along which the
@@ -427,8 +442,9 @@ public:
     /* Compute a suitable step size (this routine samples the integrand
        between steps, hence the factor of 2) */
     uint32_t nSteps   = (uint32_t)std::ceil(length / (2 * m_stepSize));
-    Float    stepSize = length / nSteps, multiplier = (1.0f / 6.0f) * stepSize * m_scale;
-    Vector   fullStep = ray.d * stepSize, halfStep = fullStep * .5f;
+    Float    stepSize = length / nSteps,
+          multiplier  = (1.0f / 6.0f) * stepSize * m_scale;
+    Vector fullStep = ray.d * stepSize, halfStep = fullStep * .5f;
 
     Float node1 = lookupDensity(p, ray.d);
 
@@ -442,8 +458,10 @@ public:
 #endif
 
     for (uint32_t i = 0; i < nSteps; ++i) {
-      Float node2 = lookupDensity(p + halfStep, ray.d), node3 = lookupDensity(p + fullStep, ray.d),
-            newDensity = integratedDensity + multiplier * (node1 + node2 * 4 + node3);
+      Float node2 = lookupDensity(p + halfStep, ray.d),
+            node3 = lookupDensity(p + fullStep, ray.d),
+            newDensity =
+                integratedDensity + multiplier * (node1 + node2 * 4 + node3);
 #if defined(HETVOL_STATISTICS)
       ++avgRayMarchingStepsSampling;
 #endif
@@ -455,7 +473,8 @@ public:
            this point; instead, the density are modeled based on a
            quadratic polynomial that is fit to the last three lookups */
 
-        Float a = 0, b = stepSize, x = a, fx = integratedDensity - desiredDensity,
+        Float a = 0, b = stepSize, x = a,
+              fx          = integratedDensity - desiredDensity,
               stepSizeSqr = stepSize * stepSize, temp = m_scale / stepSizeSqr;
         int it = 1;
 
@@ -467,7 +486,8 @@ public:
           ++avgNewtonIterations;
 #endif
           /* Lagrange polynomial from the Simpson quadrature */
-          Float dfx = temp * (node1 * stepSizeSqr - (3 * node1 - 4 * node2 + node3) * stepSize * x +
+          Float dfx = temp * (node1 * stepSizeSqr -
+                              (3 * node1 - 4 * node2 + node3) * stepSize * x +
                               2 * (node1 - 2 * node2 + node3) * x * x);
 #if 0
                         cout << "Iteration " << it << ":  a=" << a << ", b=" << b
@@ -476,21 +496,24 @@ public:
 
           x -= fx / dfx;
 
-          if (EXPECT_NOT_TAKEN(x <= a || x >= b || dfx == 0)) x = 0.5f * (b + a);
+          if (EXPECT_NOT_TAKEN(x <= a || x >= b || dfx == 0))
+            x = 0.5f * (b + a);
 
           /* Integrated version of the above Lagrange polynomial */
           Float intval =
-              integratedDensity + temp * (1.0f / 6.0f) *
-                                      (x * (6 * node1 * stepSizeSqr -
-                                            3 * (3 * node1 - 4 * node2 + node3) * stepSize * x +
-                                            4 * (node1 - 2 * node2 + node3) * x * x));
+              integratedDensity +
+              temp * (1.0f / 6.0f) *
+                  (x * (6 * node1 * stepSizeSqr -
+                        3 * (3 * node1 - 4 * node2 + node3) * stepSize * x +
+                        4 * (node1 - 2 * node2 + node3) * x * x));
           fx = intval - desiredDensity;
 
           if (std::abs(fx) < 1e-6f) {
             t                 = mint + stepSize * i + x;
             integratedDensity = intval;
             densityAtT =
-                temp * (node1 * stepSizeSqr - (3 * node1 - 4 * node2 + node3) * stepSize * x +
+                temp * (node1 * stepSizeSqr -
+                        (3 * node1 - 4 * node2 + node3) * stepSize * x +
                         2 * (node1 - 2 * node2 + node3) * x * x);
             return true;
           } else if (++it > 30) {
@@ -566,21 +589,23 @@ public:
     }
   }
 
-  bool sampleDistance(const Ray &ray, MediumSamplingRecord &mRec, Sampler *sampler) const {
+  bool sampleDistance(const Ray &ray, MediumSamplingRecord &mRec,
+                      Sampler *sampler) const {
     Float integratedDensity, densityAtMinT, densityAtT;
     bool  success = false;
 
     if (m_method == ESimpsonQuadrature) {
       Float desiredDensity = -math::fastlog(1 - sampler->next1D());
-      if (invertDensityIntegral(ray, desiredDensity, integratedDensity, mRec.t, densityAtMinT,
-                                densityAtT)) {
-        mRec.p          = ray(mRec.t);
-        success         = true;
-        Spectrum albedo = m_albedo->lookupSpectrum(mRec.p);
-        mRec.sigmaS     = albedo * densityAtT;
-        mRec.sigmaA     = Spectrum(densityAtT) - mRec.sigmaS;
-        mRec.orientation =
-            m_orientation != NULL ? m_orientation->lookupVector(mRec.p) : Vector(0.0f);
+      if (invertDensityIntegral(ray, desiredDensity, integratedDensity, mRec.t,
+                                densityAtMinT, densityAtT)) {
+        mRec.p           = ray(mRec.t);
+        success          = true;
+        Spectrum albedo  = m_albedo->lookupSpectrum(mRec.p);
+        mRec.sigmaS      = albedo * densityAtT;
+        mRec.sigmaA      = Spectrum(densityAtT) - mRec.sigmaS;
+        mRec.orientation = m_orientation != NULL
+                               ? m_orientation->lookupVector(mRec.p)
+                               : Vector(0.0f);
       }
 
       Float expVal       = math::fastexp(-integratedDensity);
@@ -618,15 +643,19 @@ public:
         ++avgRayMarchingStepsSampling;
 #endif
         if (densityAtT * m_invMaxDensity > sampler->next1D()) {
-          mRec.t             = t;
-          mRec.p             = p;
-          Spectrum albedo    = m_albedo->lookupSpectrum(p);
-          mRec.sigmaS        = albedo * densityAtT;
-          mRec.sigmaA        = Spectrum(densityAtT) - mRec.sigmaS;
-          mRec.transmittance = Spectrum(densityAtT != 0.0f ? 1.0f / densityAtT : 0);
-          if (!std::isfinite(mRec.transmittance[0])) // prevent rare overflow warnings
+          mRec.t          = t;
+          mRec.p          = p;
+          Spectrum albedo = m_albedo->lookupSpectrum(p);
+          mRec.sigmaS     = albedo * densityAtT;
+          mRec.sigmaA     = Spectrum(densityAtT) - mRec.sigmaS;
+          mRec.transmittance =
+              Spectrum(densityAtT != 0.0f ? 1.0f / densityAtT : 0);
+          if (!std::isfinite(
+                  mRec.transmittance[0])) // prevent rare overflow warnings
             mRec.transmittance = Spectrum(0.0f);
-          mRec.orientation = m_orientation != NULL ? m_orientation->lookupVector(p) : Vector(0.0f);
+          mRec.orientation = m_orientation != NULL
+                                 ? m_orientation->lookupVector(p)
+                                 : Vector(0.0f);
           mRec.medium      = this;
           success          = true;
           break;
@@ -649,7 +678,8 @@ public:
         Point p     = ray(ray.maxt);
         maxtDensity = lookupDensity(p, ray.d) * m_scale;
         maxtAlbedo  = m_albedo->lookupSpectrum(p);
-        orientation = m_orientation != NULL ? m_orientation->lookupVector(p) : Vector(0.0f);
+        orientation = m_orientation != NULL ? m_orientation->lookupVector(p)
+                                            : Vector(0.0f);
       }
       mRec.orientation   = orientation;
       mRec.transmittance = Spectrum(expVal);
@@ -680,9 +710,11 @@ public:
   }
 
   //* Sample a free flight according to sigma_maj
-  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax, bool *terminated,
+  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
+                                ETrackingType type, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const {
-    //
+    Log(EError, "Heterogeneous::sampleTrMajorant no support");
+    exit(1);
   }
 
   MTS_DECLARE_CLASS()

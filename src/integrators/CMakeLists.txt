@@ -26,9 +26,11 @@ add_mts_plugin(erpt erpt/erpt.cpp erpt/erpt_proc.cpp)
 
 
 # Volumetric
-add_mts_plugin(vns path/vpath.cpp)
+#add_mts_plugin(vns path/vpath.cpp)
 
 add_mts_plugin(pathguiding pathguiding/pathguiding.cpp)
+add_mts_plugin(volpathguiding pathguiding/volpathguiding.cpp)
+add_mts_plugin(sdtracking pathguiding/sdtracking.cpp)
 target_link_libraries(pathguiding openpgl)
 # Spectral
 #add_mts_plugin(spath spectral/spath.cpp)

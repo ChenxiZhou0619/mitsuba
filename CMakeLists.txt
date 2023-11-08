@@ -34,6 +34,9 @@ add_compile_definitions(
 
 include_directories(include)
 include_directories(ext/openpgl/openpgl/include)
+include_directories(ext/openvdb/nanovdb)
+include_directories(ext/openvdb/openvdb)
+include_directories(ext/tbb/include)
 
 # Load the configure script
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/data/cmake)
@@ -45,6 +48,9 @@ endif()
 
 # Build dependencies
 add_subdirectory(ext/openpgl)
+#add_subdirectory(ext/openvdb)
+add_subdirectory(ext/openvdb/nanovdb/nanovdb)
+add_subdirectory(ext/tbb)
 
 # Build the source code
 add_subdirectory(src)

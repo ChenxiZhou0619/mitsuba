@@ -31,19 +31,19 @@ MTS_NAMESPACE_BEGIN
  *     \parameter{sigmaA, sigmaS}{\Spectrum}{
  *         Absorption and scattering
  *         coefficients of the medium in inverse scene units.
- *         These parameters are mutually exclusive with \code{sigmaT} and \code{albedo}
- *         \default{configured based on \code{material}}
+ *         These parameters are mutually exclusive with \code{sigmaT} and
+ * \code{albedo} \default{configured based on \code{material}}
  *     }
  *     \parameter{sigmaT, albedo}{\Spectrum}{
  *         Extinction coefficient in inverse scene units
  *         and a (unitless) single-scattering albedo.
- *         These parameters are mutually exclusive with \code{sigmaA} and \code{sigmaS}
- *         \default{configured based on \code{material}}
+ *         These parameters are mutually exclusive with \code{sigmaA} and
+ * \code{sigmaS} \default{configured based on \code{material}}
  *     }
  *     \parameter{\footnotesize{scale}}{\Float}{
- *         Optional scale factor that will be applied to the \code{sigma*} parameters.
- *         It is provided for convenience when accomodating data based on different units,
- *         or to simply tweak the density of the medium. \default{1}
+ *         Optional scale factor that will be applied to the \code{sigma*}
+ * parameters. It is provided for convenience when accomodating data based on
+ * different units, or to simply tweak the density of the medium. \default{1}
  *     }
  *     \parameter{\Unnamed}{\Phase}{
  *          A nested phase function that describes the directional
@@ -58,11 +58,11 @@ MTS_NAMESPACE_BEGIN
  * medium sampling methods. It provides two different ways of configuring
  * the medium properties. One possibility is to load a material preset
  * using the \code{material} parameter---see \tblref{medium-coefficients}
- * for details. Alternatively, when specifying parameters by hand, they can either
- * be provided using the scattering and absorption coefficients, or
- * by declaring the extinction coefficient and single scattering
- * albedo (whichever is more convenient). Mixing these parameter
- * initialization methods is not allowed.
+ * for details. Alternatively, when specifying parameters by hand, they can
+ * either be provided using the scattering and absorption coefficients, or by
+ * declaring the extinction coefficient and single scattering albedo (whichever
+ * is more convenient). Mixing these parameter initialization methods is not
+ * allowed.
  *
  * All scattering parameters (named \code{sigma*}) should
  * be provided in inverse scene units. For instance, when a world-space
@@ -74,13 +74,13 @@ MTS_NAMESPACE_BEGIN
  *
  * \renderings{
  *    \rendering{A squishy ball rendered with subsurface scattering and
- *    a dielectric BSDF (courtesy of Chanxi Zheng)}{medium_homogeneous_squishy.jpg}
+ *    a dielectric BSDF (courtesy of Chanxi
+ * Zheng)}{medium_homogeneous_squishy.jpg}
  * }
  *
- * \begin{xml}[caption=Declaration of a forward scattering medium with high albedo]
- * <medium id="myMedium" type="homogeneous">
- *     <spectrum name="sigmaS" value="1"/>
- *     <spectrum name="sigmaA" value="0.05"/>
+ * \begin{xml}[caption=Declaration of a forward scattering medium with high
+ * albedo] <medium id="myMedium" type="homogeneous"> <spectrum name="sigmaS"
+ * value="1"/> <spectrum name="sigmaA" value="0.05"/>
  *
  *     <phase type="hg">
  *         <float name="g" value="0.7"/>
@@ -112,25 +112,34 @@ MTS_NAMESPACE_BEGIN
  *         Skimmilk && Skin1 && Skin2 \\
  *         Spectralon && Wholemilk && \\
  *         \cmidrule{1-1} \cmidrule{3-3} \cmidrule{5-5}
- *         Lowfat Milk              &&  Gatorade                &&    White Grapefruit Juice     \\
- *         Reduced Milk             &&  Chardonnay              &&    Shampoo                    \\
- *         Regular Milk             &&  White Zinfandel         &&    Strawberry Shampoo         \\
- *         Espresso                 &&  Merlot                  &&    \mbox{Head \& Shoulders
+ *         Lowfat Milk              &&  Gatorade                &&    White
+ * Grapefruit Juice     \\
+ *         Reduced Milk             &&  Chardonnay              &&    Shampoo \\
+ *         Regular Milk             &&  White Zinfandel         &&    Strawberry
+ * Shampoo         \\ Espresso                 &&  Merlot                  &&
+ * \mbox{Head \& Shoulders
  * Shampoo}  \\
- *         Mint Mocha Coffee        &&  Budweiser Beer          &&    Lemon Tea Powder           \\
- *         Lowfat Soy Milk          &&  Coors Light Beer        &&    Orange Juice Powder        \\
- *         Regular Soy Milk         &&  Clorox                  &&    Pink Lemonade Powder       \\
- *         Lowfat Chocolate Milk    &&  Apple Juice             &&    Cappuccino Powder          \\
- *         Regular Chocolate Milk   &&  Cranberry Juice         &&    Salt Powder                \\
- *         Coke                     &&  Grape Juice             &&    Sugar Powder               \\
- *         Pepsi                    &&  Ruby Grapefruit Juice   &&    Suisse Mocha               \\
- *         Sprite                   &&                          &&                               \\
+ *         Mint Mocha Coffee        &&  Budweiser Beer          &&    Lemon Tea
+ * Powder           \\
+ *         Lowfat Soy Milk          &&  Coors Light Beer        &&    Orange
+ * Juice Powder        \\
+ *         Regular Soy Milk         &&  Clorox                  &&    Pink
+ * Lemonade Powder       \\
+ *         Lowfat Chocolate Milk    &&  Apple Juice             &&    Cappuccino
+ * Powder          \\
+ *         Regular Chocolate Milk   &&  Cranberry Juice         &&    Salt
+ * Powder                \\
+ *         Coke                     &&  Grape Juice             &&    Sugar
+ * Powder               \\
+ *         Pepsi                    &&  Ruby Grapefruit Juice   &&    Suisse
+ * Mocha               \\
+ *         Sprite                   &&                          && \\
  *         \bottomrule
  *     \end{tabular}}
  *     \caption{\label{tbl:medium-coefficients}This
  *          table lists all supported medium material presets. The
- *          top entries are from Jensen et al. \cite{Jensen2001Practical}, and the
- *          bottom ones are from Narasimhan et al. \cite{Narasimhan2006Acquiring}.
+ *          top entries are from Jensen et al. \cite{Jensen2001Practical}, and
+ * the bottom ones are from Narasimhan et al. \cite{Narasimhan2006Acquiring}.
  *          They all use units of $\frac{1}{mm}$, so remember to set
  *          \code{scale} appropriately when your scene is not
  *          in units of millimeters.
@@ -171,7 +180,8 @@ public:
       for (int i = 0; i < SPECTRUM_SAMPLES; ++i) {
         /// Record the highest albedo values across channels
         Float albedo = m_sigmaS[i] / m_sigmaT[i];
-        if (albedo > m_mediumSamplingWeight && m_sigmaT[i] != 0) m_mediumSamplingWeight = albedo;
+        if (albedo > m_mediumSamplingWeight && m_sigmaT[i] != 0)
+          m_mediumSamplingWeight = albedo;
       }
       if (m_mediumSamplingWeight > 0) {
         /* The medium scatters some light -> place at least half
@@ -249,7 +259,8 @@ public:
     Medium::configure();
     m_albedo = 0;
     for (int i = 0; i < SPECTRUM_SAMPLES; ++i) {
-      if (m_sigmaT[i] != 0) m_albedo = std::max(m_albedo, m_sigmaS[i] / m_sigmaT[i]);
+      if (m_sigmaT[i] != 0)
+        m_albedo = std::max(m_albedo, m_sigmaS[i] / m_sigmaT[i]);
     }
   }
 
@@ -264,11 +275,14 @@ public:
     Float    negLength = ray.mint - ray.maxt;
     Spectrum transmittance;
     for (int i = 0; i < SPECTRUM_SAMPLES; ++i)
-      transmittance[i] = m_sigmaT[i] != 0 ? math::fastexp(m_sigmaT[i] * negLength) : (Float)1.0f;
+      transmittance[i] = m_sigmaT[i] != 0
+                             ? math::fastexp(m_sigmaT[i] * negLength)
+                             : (Float)1.0f;
     return transmittance;
   }
 
-  bool sampleDistance(const Ray &ray, MediumSamplingRecord &mRec, Sampler *sampler) const {
+  bool sampleDistance(const Ray &ray, MediumSamplingRecord &mRec,
+                      Sampler *sampler) const {
     Float rand            = sampler->next1D(), sampledDistance;
     Float samplingDensity = m_samplingDensity;
 
@@ -277,7 +291,8 @@ public:
       if (m_strategy != EMaximum) {
         /* Choose the sampling density to be used */
         if (m_strategy == EBalance) {
-          int channel = std::min((int)(sampler->next1D() * SPECTRUM_SAMPLES), SPECTRUM_SAMPLES - 1);
+          int channel = std::min((int)(sampler->next1D() * SPECTRUM_SAMPLES),
+                                 SPECTRUM_SAMPLES - 1);
           samplingDensity = m_sigmaT[channel];
         }
         sampledDistance = -math::fastlog(1 - rand) / samplingDensity;
@@ -335,9 +350,11 @@ public:
     }
 
     mRec.transmittance = (m_sigmaT * (-sampledDistance)).exp();
-    mRec.pdfSuccessRev = mRec.pdfSuccess = mRec.pdfSuccess * m_mediumSamplingWeight;
-    mRec.pdfFailure = m_mediumSamplingWeight * mRec.pdfFailure + (1 - m_mediumSamplingWeight);
-    mRec.medium     = this;
+    mRec.pdfSuccessRev = mRec.pdfSuccess =
+        mRec.pdfSuccess * m_mediumSamplingWeight;
+    mRec.pdfFailure =
+        m_mediumSamplingWeight * mRec.pdfFailure + (1 - m_mediumSamplingWeight);
+    mRec.medium = this;
     if (mRec.transmittance.max() < 1e-20) mRec.transmittance = Spectrum(0.0f);
 
     return success;
@@ -375,12 +392,14 @@ public:
     }
 
     mRec.transmittance = (m_sigmaT * (-distance)).exp();
-    mRec.pdfSuccess = mRec.pdfSuccessRev = mRec.pdfSuccess * m_mediumSamplingWeight;
-    mRec.pdfFailure = mRec.pdfFailure * m_mediumSamplingWeight + (1 - m_mediumSamplingWeight);
-    mRec.sigmaA     = m_sigmaA;
-    mRec.sigmaS     = m_sigmaS;
-    mRec.time       = ray.time;
-    mRec.medium     = this;
+    mRec.pdfSuccess    = mRec.pdfSuccessRev =
+        mRec.pdfSuccess * m_mediumSamplingWeight;
+    mRec.pdfFailure =
+        mRec.pdfFailure * m_mediumSamplingWeight + (1 - m_mediumSamplingWeight);
+    mRec.sigmaA = m_sigmaA;
+    mRec.sigmaS = m_sigmaS;
+    mRec.time   = ray.time;
+    mRec.medium = this;
     if (mRec.transmittance.max() < 1e-20) mRec.transmittance = Spectrum(0.0f);
   }
 
@@ -415,9 +434,26 @@ public:
     return oss.str();
   }
   //* Sample a free flight according to sigma_maj
-  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax, bool *terminated,
+  virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
+                                ETrackingType type, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const {
-    //
+    Float extinction_maj = m_sigmaT[0];
+    Float distance       = -math::fastlog(1 - u) / extinction_maj;
+    if (distance > tmax) {
+      *terminated          = true;
+      maj_rec->free_flight = tmax;
+      maj_rec->tr_majorant = (m_sigmaT * -tmax).exp();
+    } else {
+      *terminated          = false;
+      maj_rec->free_flight = distance;
+      maj_rec->tr_majorant = (m_sigmaT * -distance).exp();
+      maj_rec->sigma_a     = m_sigmaA;
+      maj_rec->sigma_s     = m_sigmaS;
+      maj_rec->sigma_n     = Spectrum(.0f);
+      maj_rec->sigma_maj   = m_sigmaT;
+      maj_rec->medium      = this;
+      maj_rec->p           = ray(distance);
+    }
   }
   MTS_DECLARE_CLASS()
 private:

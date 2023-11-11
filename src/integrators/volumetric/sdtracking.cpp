@@ -6,6 +6,10 @@
 
 // clang-format on
 
+/**
+ * Spectral and Decomposition Tracking for Rendering Heterogeneous Volumes
+ */
+
 MTS_NAMESPACE_BEGIN
 
 class SDTrackingPT : public MonteCarloIntegrator {
@@ -227,15 +231,15 @@ protected:
                                  const Spectrum &sigma_s,
                                  const Spectrum &sigma_n, const Spectrum &beta,
                                  Float u, Float *pdf) const {
-     //Float sigAMax = sigma_a.max();
-     //Float sigSMax = sigma_s.max();
-     //Float sigNMax = sigma_n.max();
+    // Float sigAMax = sigma_a.max();
+    // Float sigSMax = sigma_s.max();
+    // Float sigNMax = sigma_n.max();
     //
-     //Float invC = 1.f / (sigAMax + sigSMax + sigNMax);
+    // Float invC = 1.f / (sigAMax + sigSMax + sigNMax);
     //
-     //Float Pa = sigAMax * invC;
-     //Float Ps = sigSMax * invC;
-     //Float Pn = sigNMax * invC;
+    // Float Pa = sigAMax * invC;
+    // Float Ps = sigSMax * invC;
+    // Float Pn = sigNMax * invC;
 
     Float Ca = (sigma_a * beta).average();
     Float Cs = (sigma_s * beta).average();

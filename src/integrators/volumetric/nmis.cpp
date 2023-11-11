@@ -1,28 +1,29 @@
 // clang-format off
-
 #include <mitsuba/core/plugin.h>
 #include <mitsuba/render/scene.h>
 #include <mitsuba/render/renderproc.h>
-
-#include "PathInfo.h"
 // clang-format on
+
+/**
+ *    A null-scattering path integral formulation of light transport
+ */
 
 MTS_NAMESPACE_BEGIN
 
-class VolPathGuidingTracer : public MonteCarloIntegrator {
+class NMISTracer : public MonteCarloIntegrator {
 public:
-  VolPathGuidingTracer(const Properties &props) : MonteCarloIntegrator(props) {
+  NMISTracer(const Properties &props) : MonteCarloIntegrator(props) {
     //
   }
 
-  VolPathGuidingTracer(Stream *stream, InstanceManager *manager)
+  NMISTracer(Stream *stream, InstanceManager *manager)
       : MonteCarloIntegrator(stream, manager) {
-    Log(EError, "VolPathGuidingTracer serialization is not support\n");
+    Log(EError, "NMISTracer serialization is not support\n");
   }
 
   void serialize(Stream *stream, InstanceManager *manager) const override {
     MonteCarloIntegrator::serialize(stream, manager);
-    Log(EError, "VolPathguidingTracer serialization is not support\n");
+    Log(EError, "NMISTracer serialization is not support\n");
   }
 
   virtual Spectrum Li(const RayDifferential &r,
@@ -382,7 +383,7 @@ private:
   MTS_DECLARE_CLASS()
 };
 
-MTS_IMPLEMENT_CLASS(VolPathGuidingTracer, false, MonteCarloIntegrator)
-MTS_EXPORT_PLUGIN(VolPathGuidingTracer, "Volumetric path guiding path tracing")
+MTS_IMPLEMENT_CLASS(NMISTracer, false, MonteCarloIntegrator)
+MTS_EXPORT_PLUGIN(NMISTracer, "Volumetric path guiding path tracing")
 
 MTS_NAMESPACE_END

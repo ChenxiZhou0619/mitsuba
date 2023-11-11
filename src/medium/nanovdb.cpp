@@ -93,8 +93,29 @@ public:
           for (int i = r.begin(); i < r.end(); ++i) {
             auto [x, y, z]    = m_majGrid->offsetToXYZ(i);
             auto [wmin, wmax] = m_majGrid->voxelBound(x, y, z);
-            auto [x0, y0, z0] = WorldToIndex(wmin);
-            auto [x1, y1, z1] = WorldToIndex(wmax);
+
+            auto [xmin, ymin, zmin] = wmin;
+            auto [xmax, ymax, zmax] = wmax;
+
+            Float x0 = INFINITY, y0 = INFINITY, z0 = INFINITY;
+            Float x1 = -INFINITY, y1 = -INFINITY, z1 = -INFINITY;
+
+            for (int i = 0; i < 8; ++i) {
+              Point pvtx;
+              pvtx[0] = (i & 0b0001) ? xmax : xmin;
+              pvtx[1] = (i & 0b0010) ? ymax : ymin;
+              pvtx[2] = (i & 0b0100) ? zmax : zmin;
+
+              pvtx = WorldToIndex(pvtx);
+
+              x0 = std::min(x0, pvtx[0]);
+              y0 = std::min(y0, pvtx[1]);
+              z0 = std::min(z0, pvtx[2]);
+
+              x1 = std::max(x1, pvtx[0]);
+              y1 = std::max(y1, pvtx[1]);
+              z1 = std::max(z1, pvtx[2]);
+            }
 
             int ix0 = std::max((int)(x0 - 1), m_indexInfo.minIndex[0]);
             int iy0 = std::max((int)(y0 - 1), m_indexInfo.minIndex[1]);

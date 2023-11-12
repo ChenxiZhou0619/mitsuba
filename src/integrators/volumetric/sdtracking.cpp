@@ -88,15 +88,11 @@ public:
                 // update the throughput
                 beta *= tr_maj * sigma_s / (pdfFlight * pdfCollision);
 
-                if (!beta.isValid()) {
-                  printf("Stop here 1\n");
-                }
-
                 DirectSamplingRecord dRec{majRec.p, .0f};
                 dRec.refN = Normal(.0f);
 
                 L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, medium,
-                                                rRec.sampler, r_u,
+                                                rRec.sampler, r_u, beta,
                                                 medium->getPhaseFunction());
 
                 const PhaseFunction        *phase = medium->getPhaseFunction();
@@ -129,10 +125,6 @@ public:
                 beta *= tr_maj * sigma_n / (pdfFlight * pdfCollision);
 
                 r_l *= (1.f / pdfCollision);
-
-                if (!beta.isValid()) {
-                  printf("Stop here 2\n");
-                }
 
                 ray      = Ray{majRec.p, ray.d, .0f};
                 ray.mint = Epsilon;
@@ -191,7 +183,8 @@ public:
       DirectSamplingRecord dRec(its);
       if (bsdf->getType() & BSDF::ESmooth)
         L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium,
-                                        rRec.sampler, r_u, nullptr, bsdf, &its);
+                                        rRec.sampler, r_u, beta, nullptr, bsdf,
+                                        &its);
 
       // BSDF sampling
       BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
@@ -231,15 +224,6 @@ protected:
                                  const Spectrum &sigma_s,
                                  const Spectrum &sigma_n, const Spectrum &beta,
                                  Float u, Float *pdf) const {
-    // Float sigAMax = sigma_a.max();
-    // Float sigSMax = sigma_s.max();
-    // Float sigNMax = sigma_n.max();
-    //
-    // Float invC = 1.f / (sigAMax + sigSMax + sigNMax);
-    //
-    // Float Pa = sigAMax * invC;
-    // Float Ps = sigSMax * invC;
-    // Float Pn = sigNMax * invC;
 
     Float Ca = (sigma_a * beta).average();
     Float Cs = (sigma_s * beta).average();
@@ -264,7 +248,7 @@ protected:
 
   Spectrum SampleVolumetricNEE(const Scene *scene, DirectSamplingRecord &dRec,
                                const Vector &wi, const Medium *medium,
-                               Sampler *sampler, Float r_p,
+                               Sampler *sampler, Float r_p, Spectrum beta,
                                const PhaseFunction *phase = nullptr,
                                const BSDF          *bsdf  = nullptr,
                                const Intersection  *its   = nullptr) const {
@@ -324,20 +308,16 @@ protected:
             currentMedium, shadowRay, tMax, rng,
             ETrackingType::ESpectralTracking,
             [&](MajorantSamplingRecord majRec) {
-              Float sigAMax = majRec.sigma_a.max();
-              Float sigSMax = majRec.sigma_s.max();
-              Float sigNMax = majRec.sigma_n.max();
+              Float Ca = (majRec.sigma_a * beta).average();
+              Float Cs = (majRec.sigma_s * beta).average();
+              Float Cn = (majRec.sigma_n * beta).average();
 
-              Float invC = 1.f / (sigAMax + sigSMax + sigNMax);
-
-              Float Pn = sigNMax * invC;
+              Float invC = 1.f / (Ca + Cs + Cn);
+              Float Pn   = Cn * invC;
 
               tr *= majRec.tr_majorant * majRec.sigma_n / majRec.pdf_flight;
+              beta *= majRec.tr_majorant * majRec.sigma_n / majRec.pdf_flight;
               r_u *= Pn;
-
-              if (!tr.isValid()) {
-                printf("Stop here 4\n");
-              }
 
               if (tr.isZero()) return false;
               return true;
@@ -347,9 +327,6 @@ protected:
         if (tr.isZero()) break;
 
         tr *= T_maj / pdfPassThrough;
-        if (!tr.isValid()) {
-          printf("Stop here 5\n");
-        }
       }
 
       shadowRay.o    = si.p;
@@ -364,10 +341,6 @@ protected:
 
     r_l *= r_p;
     r_u *= r_p * scatterPdf / dRec.pdf;
-
-    if (!tr.isValid()) {
-      printf("Stop here 3\n");
-    }
 
     if (!(emitter->isOnSurface() && dRec.measure == ESolidAngle))
       return scatterVal * tr * Le / r_l;

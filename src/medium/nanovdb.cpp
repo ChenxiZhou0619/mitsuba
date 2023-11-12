@@ -270,10 +270,6 @@ public:
     maj_rec->free_flight = tmax;
     maj_rec->p           = ray(maj_rec->free_flight);
     *terminated          = true;
-
-    if (maj_rec->pdf_flight == .0f) {
-      printf("Stop here 6\n");
-    }
   }
 
   MTS_DECLARE_CLASS()

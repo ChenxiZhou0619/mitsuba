@@ -37,6 +37,7 @@ include_directories(ext/openpgl/openpgl/include)
 include_directories(ext/openvdb/nanovdb)
 include_directories(ext/openvdb/openvdb)
 include_directories(ext/tbb/include)
+include_directories(ext/matplotlib-cpp)
 
 # Load the configure script
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/data/cmake)

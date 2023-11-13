@@ -455,6 +455,13 @@ public:
       maj_rec->p           = ray(distance);
     }
   }
+
+  std::unique_ptr<Tracker> GetTracker(const Ray &ray,
+                                      Float      tmax_world) const override {
+    Log(EError, "Homogeneous::GetTracker not support");
+    exit(1);
+  }
+
   MTS_DECLARE_CLASS()
 private:
   Float             m_samplingDensity, m_mediumSamplingWeight;

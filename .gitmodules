@@ -7,3 +7,6 @@
 [submodule "ext/tbb"]
 	path = ext/tbb
 	url = git@github.com:oneapi-src/oneTBB.git
+[submodule "ext/matplotlib-cpp"]
+	path = ext/matplotlib-cpp
+	url = git@github.com:lava/matplotlib-cpp.git

@@ -112,6 +112,8 @@ enum ETrackingType {
   ESpectralTracking   = 1 << 1,
 };
 
+struct Tracker;
+
 /** \brief Abstract participating medium
  * \ingroup librender
  */
@@ -212,6 +214,21 @@ public:
                                 ETrackingType type, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const = 0;
 
+  // FIXME : abstract tracker
+  virtual std::unique_ptr<Tracker> GetTracker(const Ray &ray,
+                                              Float      tmax) const = 0;
+
+  virtual Float SampleDensity(Point world) const {
+    Log(EError, "SampleDensity default not implemented");
+    exit(1);
+  };
+
+  // FIXME : sample by voxel index is not suitable for all grid type
+  virtual Float SampleMajDensity(uint32_t dataAccessIdx) const {
+    Log(EError, "SampleMajDensity default not implemented");
+    exit(1);
+  };
+
   MTS_DECLARE_CLASS()
 protected:
   /// Create a new participating medium instance
@@ -243,9 +260,6 @@ Spectrum SampleTrMajorant(const Medium *medium, RayDifferential ray, Float tmax,
                              &maj_rec);
     if (terminated) {
       if (pdf) *pdf = maj_rec.pdf_flight;
-      if (pdf && *pdf == .0f) {
-        printf("Stop here 7\n");
-      }
       return maj_rec.tr_majorant;
     }
 

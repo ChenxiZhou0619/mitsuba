@@ -20,7 +20,6 @@
 #include <mitsuba/core/statistics.h>
 #include <mitsuba/render/scene.h>
 #include <mitsuba/render/volume.h>
-
 MTS_NAMESPACE_BEGIN
 
 /**
@@ -714,6 +713,12 @@ public:
                                 ETrackingType type, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const {
     Log(EError, "Heterogeneous::sampleTrMajorant no support");
+    exit(1);
+  }
+
+  std::unique_ptr<Tracker> GetTracker(const Ray &ray,
+                                      Float      tmax_world) const override {
+    Log(EError, "Heterogeneous::GetTracker not support");
     exit(1);
   }
 

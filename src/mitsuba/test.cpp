@@ -51,6 +51,8 @@ int main(int argc, char **argv) {
   p.setInteger("majResolutionY", resolution);
   p.setInteger("majResolutionZ", resolution);
 
+  p.setString("partition", "octreeGrid");
+
   auto medium = (Medium *)manager->createObject(p);
 
   medium->configure();

@@ -207,14 +207,6 @@ UniformGrid::configure(const std::function<Point3(Point)>  &w2i,
           int iy1 = (int)(y1 + 1);
           int iz1 = (int)(z1 + 1);
 
-          //          int ix0 = x0;
-          //          int iy0 = y0;
-          //          int iz0 = z0;
-          //
-          //          int ix1 = x1 + 1;
-          //          int iy1 = y1 + 1;
-          //          int iz1 = z1 + 1;
-
           Float majorant = .0f;
           for (int xx = ix0; xx <= ix1; ++xx)
             for (int yy = iy0; yy <= iy1; ++yy)

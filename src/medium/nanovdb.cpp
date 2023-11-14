@@ -7,6 +7,7 @@
 #include <nanovdb/util/IO.h>
 #include <nanovdb/util/SampleFromVoxels.h>
 
+#include "partition/octree.h"
 #include "partition/partition.h"
 #include "partition/uniformgrid.h"
 
@@ -83,6 +84,10 @@ public:
 
       m_majGrid =
           std::make_unique<UniformGrid>(m_bounds, Vector3i{resX, resY, resZ});
+    } else if (partitionType == "octreeGrid") {
+      //* Fetch the maxdepth of octree grid
+
+      m_majGrid = std::make_unique<OctreeGrid>(m_bounds, 8, 4);
     } else {
       Log(EError, "Undefined partition type");
       exit(1);

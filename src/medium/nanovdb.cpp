@@ -87,7 +87,7 @@ public:
     } else if (partitionType == "octreeGrid") {
       //* Fetch the maxdepth of octree grid
 
-      m_majGrid = std::make_unique<OctreeGrid>(m_bounds, 8, 4);
+      m_majGrid = std::make_unique<OctreeGrid>(m_bounds, 7, 2);
     } else {
       Log(EError, "Undefined partition type");
       exit(1);

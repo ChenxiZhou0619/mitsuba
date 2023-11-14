@@ -49,6 +49,10 @@ protected:
     Float yt = (pmax[1] - position[1]) / direction[1];
     Float zt = (pmax[2] - position[2]) / direction[2];
 
+    xt = xt < .0f ? INFINITY : xt;
+    yt = yt < .0f ? INFINITY : yt;
+    zt = zt < .0f ? INFINITY : zt;
+
     Float tNear;
     if (xt < yt && xt < zt) {
       stepAxis = 0;
@@ -61,10 +65,6 @@ protected:
       tNear    = zt;
     }
     stepDistance = tNear;
-
-    if (tNear < 0) {
-      printf("Stop here");
-    }
 
     return tNear;
   }
@@ -257,8 +257,85 @@ OctreeGrid::configure(const std::function<Point3(Point)>  &w2i,
       subnode.nodeCenter = node.nodeCenter + centerOffset;
       subnode.depth      = node.depth + 1;
 
-      // TODO split logic here
-      subnode.isLeaf = subnode.depth >= m_maxDepth;
+      if (subnode.depth < m_minDepth)
+        // force split before mindepth
+        subnode.isLeaf = false;
+      else if (subnode.depth >= m_maxDepth)
+        // force leaf at maxdepth
+        subnode.isLeaf = true;
+      else {
+        //  split logic here
+        Point pmin = subnode.nodeCenter - subnode.nodeSize * .5f;
+        Point pmax = subnode.nodeCenter + subnode.nodeSize * .5f;
+
+        auto nullCollisionRate = [&](Point pa, Point pb) {
+          //
+          Float x0 = INFINITY, y0 = INFINITY, z0 = INFINITY;
+          Float x1 = -INFINITY, y1 = -INFINITY, z1 = -INFINITY;
+
+          for (int j = 0; j < 8; ++j) {
+            Point pvtx;
+            pvtx[0] = (j & 0b0001) ? pa[0] : pb[0];
+            pvtx[1] = (j & 0b0010) ? pa[1] : pb[1];
+            pvtx[2] = (j & 0b0100) ? pa[2] : pb[2];
+
+            pvtx = w2i(pvtx);
+
+            x0 = std::min(x0, pvtx[0]);
+            y0 = std::min(y0, pvtx[1]);
+            z0 = std::min(z0, pvtx[2]);
+
+            x1 = std::max(x1, pvtx[0]);
+            y1 = std::max(y1, pvtx[1]);
+            z1 = std::max(z1, pvtx[2]);
+          }
+
+          int ix0 = (int)(x0 - 1);
+          int iy0 = (int)(y0 - 1);
+          int iz0 = (int)(z0 - 1);
+
+          int ix1 = (int)(x1 + 1);
+          int iy1 = (int)(y1 + 1);
+          int iz1 = (int)(z1 + 1);
+
+          Float majorant   = .0f;
+          Float times      = .0f;
+          Float densitySum = .0f;
+
+          for (int xx = ix0; xx <= ix1; ++xx)
+            for (int yy = iy0; yy <= iy1; ++yy)
+              for (int zz = iz0; zz <= iz1; ++zz) {
+                Float density = accessor({xx, yy, zz});
+                majorant      = std::max(majorant, density);
+                times += 1.f;
+                densitySum += density;
+              }
+
+          // null collision rate
+          return 1.f - densitySum / (majorant * times);
+        };
+
+        Float totalNullCollisionRates = nullCollisionRate(pmin, pmax) * 8.f;
+        Float splitNullCollisionRates = .0f;
+        for (int j = 0; j < 8; ++j) {
+          Point pa = subnode.nodeCenter;
+
+          Vector v = subnode.nodeSize * .5f;
+          v[0] *= (j & 0b0100) ? 1.f : -1.f;
+          v[1] *= (j & 0b0010) ? 1.f : -1.f;
+          v[2] *= (j & 0b0001) ? 1.f : -1.f;
+          Point pb = pa + v;
+
+          splitNullCollisionRates += nullCollisionRate(pa, pb);
+        }
+
+        if (totalNullCollisionRates > 0.5 ||
+            totalNullCollisionRates > 1.2f * splitNullCollisionRates) {
+          subnode.isLeaf = false;
+        } else {
+          subnode.isLeaf = true;
+        }
+      }
 
       m_octree.emplace_back(subnode);
 
@@ -303,9 +380,9 @@ OctreeGrid::configure(const std::function<Point3(Point)>  &w2i,
             z1 = std::max(z1, pvtx[2]);
           }
 
-          int ix0 = (int)(x0 - 1);
-          int iy0 = (int)(y0 - 1);
-          int iz0 = (int)(z0 - 1);
+          int ix0 = (int)x0;
+          int iy0 = (int)y0;
+          int iz0 = (int)z0;
 
           int ix1 = (int)(x1 + 1);
           int iy1 = (int)(y1 + 1);

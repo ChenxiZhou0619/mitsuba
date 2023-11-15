@@ -254,6 +254,30 @@
         </descr>
     </plugin>
 
+    <plugin type="integrator" name="nmis"
+        readableName="Volumetric path tracer with null-collision MIS"
+        show="true" className="NMISTracer" extends="MonteCarloIntegrator">
+        <descr>
+            None.
+        </descr>
+    </plugin>
+
+    <plugin type="integrator" name="sdtracking"
+        readableName="Spectral tracking"
+        show="true" className="SDTrackingPT" extends="MonteCarloIntegrator">
+        <descr>
+            None.
+        </descr>
+    </plugin>
+
+    <plugin type="integrator" name="pathguiding"
+        readableName="Path guiding path tracer"
+        show="true" className="PathGuidingTracer" extends="MonteCarloIntegrator">
+        <descr>
+            None.
+        </descr>
+    </plugin>
+
     <plugin type="integrator" name="ptracer" readableName="Adjoint particle tracer" show="true"
         className="ParticleTracer" extends="ImageBasedIntegrator">
         <descr>
@@ -784,9 +808,6 @@
             minimum path depth, after which the implementation will start to use the "russian
             roulette" path termination criterion (set to <tt>-1</tt> to disable). </param>
     </plugin>
-
-    <plugin type="integrator" name="vns" readableName="Volumetric null-scattering path tracing"
-        show="true" className="VolumetricNSPathTracer" extends="MonteCarloIntegrator"> </plugin>
 
     <plugin type="rfilter" readableName="Box filter" name="box" show="true" className="BoxFilter"
         extends="ReconstructionFilter">

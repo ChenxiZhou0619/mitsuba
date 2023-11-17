@@ -278,6 +278,15 @@
         </descr>
     </plugin>
 
+    <plugin type="integrator" name="rcpt"
+        readableName="Path tracing with radiance cache"
+        show="true" className="RadianceCachePathTracer" extends="MonteCarloIntegrator">
+        <descr>
+            None.
+        </descr>
+    </plugin>
+
+
     <plugin type="integrator" name="ptracer" readableName="Adjoint particle tracer" show="true"
         className="ParticleTracer" extends="ImageBasedIntegrator">
         <descr>

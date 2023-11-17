@@ -16,10 +16,12 @@
 #include "../medium/partition/partition.h"
 #include <mitsuba/render/medium.h>
 
+#include "../integrators/radiancecache/cache/sphericalharmonics.h"
+
 namespace plt = matplotlibcpp;
 using namespace mitsuba;
 
-int main(int argc, char **argv) {
+int main_1(int argc, char **argv) {
 
   //* System initialization
   Class::staticInitialization();
@@ -110,4 +112,91 @@ int main(int argc, char **argv) {
   plt::title("Partition along ray");
   plt::legend();
   plt::save("./maj.png");
+}
+
+int main(int argc, char **argv) {
+  //* System initialization
+  Class::staticInitialization();
+  Object::staticInitialization();
+  PluginManager::staticInitialization();
+  Statistics::staticInitialization();
+  Thread::staticInitialization();
+  Logger::staticInitialization();
+  FileStream::staticInitialization();
+  Spectrum::staticInitialization();
+  Bitmap::staticInitialization();
+  Scheduler::staticInitialization();
+  SHVector::staticInitialization();
+  SceneHandler::staticInitialization();
+
+  PluginManager *manager = PluginManager::getInstance();
+
+  //* Hard code medium configuration
+  Properties p;
+  p.setPluginName("envmap");
+  p.setTransform("toWorld", Transform());
+  p.setString(
+      "filename",
+      "/home/chenxizhou/Desktop/Programming/mitsuba/scenes/SH/envmap-1.hdr");
+
+  auto emitter = (Emitter *)manager->createObject(p);
+
+  emitter->configure();
+
+  int rows = 256;
+  int cols = 512;
+
+  SphericalHarmonic sh(10);
+  //* Fit shs
+
+  // using monte-carlo to solve the sh cofficient
+  int N = 100000;
+  for (int i = 0; i < N; ++i) {
+    DirectionSamplingRecord dRec;
+    PositionSamplingRecord  pRec;
+    pRec.time = 0;
+    Float u1  = (Float)rand() / RAND_MAX;
+    Float u2  = (Float)rand() / RAND_MAX;
+
+    Vector          v   = warp::squareToUniformSphere({u1, u2});
+    Float           pdf = warp::squareToUniformSpherePdf();
+    RayDifferential ray;
+    ray.o        = Point(.0f);
+    ray.d        = v;
+    Spectrum val = emitter->evalEnvironment(ray) / pdf;
+
+    sh.addSample(v, val.getLuminance() / N);
+  }
+
+  Float data[rows * cols];
+  for (int i = 0; i < rows; ++i) {
+    Float theta    = (Float)i / rows * M_PI;
+    Float sinTheta = std::sin(theta);
+    Float cosTheta = std::cos(theta);
+
+    for (int j = 0; j < cols; ++j) {
+      Float phi = (Float)j / cols * 2.f * M_PI;
+
+      Float sinPhi = std::sin(phi);
+      Float cosPhi = std::cos(phi);
+
+      RayDifferential ray;
+      ray.o = Point(.0f);
+      ray.d = Vector(sinPhi * sinTheta, cosTheta, -cosPhi * sinTheta);
+
+      Float y            = sh.eval(ray.d);
+      data[j + i * cols] = y;
+    }
+  }
+  // Prepare data
+  PyObject *mat;
+  plt::imshow(data, rows, cols, 1, {}, &mat);
+  plt::colorbar(mat);
+
+  // Show plots
+  plt::save("./env-sh.png");
+  plt::show();
+  plt::close();
+
+  Py_DECREF(mat);
 }

@@ -58,6 +58,5 @@ using std::endl;
 #include <mitsuba/core/spectrum.h>
 #include <mitsuba/core/util.h>
 
-#include <mitsuba/core/sampledspectrum.h>
 
 #endif /* __MITSUBA_MITSUBA_H_ */

@@ -18,6 +18,8 @@
 
 #include "../integrators/radiancecache/cache/sphericalharmonics.h"
 
+#include "../integrators/spectral/spectrum/spectrum.h"
+
 namespace plt = matplotlibcpp;
 using namespace mitsuba;
 
@@ -114,7 +116,7 @@ int main_1(int argc, char **argv) {
   plt::save("./maj.png");
 }
 
-int main(int argc, char **argv) {
+int main_2(int argc, char **argv) {
   //* System initialization
   Class::staticInitialization();
   Object::staticInitialization();
@@ -199,4 +201,8 @@ int main(int argc, char **argv) {
   plt::close();
 
   Py_DECREF(mat);
+}
+
+int main(int argc, char **argv) {
+  spectral::RGBToSpectrumTable::Init(); //
 }

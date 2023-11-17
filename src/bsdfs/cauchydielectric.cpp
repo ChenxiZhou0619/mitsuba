@@ -19,7 +19,8 @@ public:
     ext_B = props.getFloat("ext_B", .0);
   }
 
-  SmoothCauchy(Stream *stream, InstanceManager *manager) : BSDF(stream, manager) {
+  SmoothCauchy(Stream *stream, InstanceManager *manager)
+      : BSDF(stream, manager) {
     // no
   }
 
@@ -35,24 +36,31 @@ public:
     // no
   }
 
-  inline Vector reflect(const Vector &wi) const { return Vector{-wi.x, -wi.y, wi.z}; }
+  inline Vector reflect(const Vector &wi) const {
+    return Vector{-wi.x, -wi.y, wi.z};
+  }
 
   inline Vector refract(const Vector &wi, Float cosThetaT, Float eta) const {
     Float scale = -(cosThetaT < 0 ? (1.f / eta) : eta);
     return Vector(scale * wi.x, scale * wi.y, cosThetaT);
   }
 
-  Spectrum eval(const BSDFSamplingRecord &bRec, EMeasure measure) const { return Spectrum(.0f); }
+  Spectrum eval(const BSDFSamplingRecord &bRec, EMeasure measure) const {
+    return Spectrum(.0f);
+  }
 
-  Float pdf(const BSDFSamplingRecord &bRec, EMeasure measure) const { return .0f; }
+  Float pdf(const BSDFSamplingRecord &bRec, EMeasure measure) const {
+    return .0f;
+  }
 
   // TODO pdf is wavelength-dependent
   //! In transmission case, only one channel should be valid
-  Spectrum sample(BSDFSamplingRecord &bRec, Float &pdf, const Point2 &sample) const {
-    bool sampleReflection =
-        (bRec.typeMask & EDeltaReflection) && (bRec.component == -1 || bRec.component == 0);
-    bool sampleTransmission =
-        (bRec.typeMask & EDeltaTransmission) && (bRec.component == -1 || bRec.component == 1);
+  Spectrum sample(BSDFSamplingRecord &bRec, Float &pdf,
+                  const Point2 &sample) const {
+    bool sampleReflection = (bRec.typeMask & EDeltaReflection) &&
+                            (bRec.component == -1 || bRec.component == 0);
+    bool sampleTransmission = (bRec.typeMask & EDeltaTransmission) &&
+                              (bRec.component == -1 || bRec.component == 1);
 
     Float cosThetaT;
 
@@ -81,7 +89,8 @@ public:
 
         /* Radiance must be scaled to account for the solid angle compression
            that occurs when crossing the interface. */
-        Float factor = (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
+        Float factor =
+            (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
 
         Spectrum value(.0f);
         value[bRec.channel] = factor * factor;
@@ -104,7 +113,8 @@ public:
 
       /* Radiance must be scaled to account for the solid angle compression
          that occurs when crossing the interface. */
-      Float    factor = (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
+      Float factor =
+          (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
       Spectrum value(.0f);
       value[bRec.channel] = factor * factor * (1 - F);
       return value;
@@ -113,10 +123,10 @@ public:
   }
 
   Spectrum sample(BSDFSamplingRecord &bRec, const Point2 &sample) const {
-    bool sampleReflection =
-        (bRec.typeMask & EDeltaReflection) && (bRec.component == -1 || bRec.component == 0);
-    bool sampleTransmission =
-        (bRec.typeMask & EDeltaTransmission) && (bRec.component == -1 || bRec.component == 1);
+    bool sampleReflection = (bRec.typeMask & EDeltaReflection) &&
+                            (bRec.component == -1 || bRec.component == 0);
+    bool sampleTransmission = (bRec.typeMask & EDeltaTransmission) &&
+                              (bRec.component == -1 || bRec.component == 1);
 
     Float cosThetaT;
 
@@ -143,7 +153,8 @@ public:
 
         /* Radiance must be scaled to account for the solid angle compression
            that occurs when crossing the interface. */
-        Float factor = (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
+        Float factor =
+            (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
 
         Spectrum value(.0f);
         value[bRec.channel] = factor * factor;
@@ -164,7 +175,8 @@ public:
 
       /* Radiance must be scaled to account for the solid angle compression
          that occurs when crossing the interface. */
-      Float    factor = (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
+      Float factor =
+          (bRec.mode == ERadiance) ? (cosThetaT < 0 ? invEta : eta) : 1.0f;
       Spectrum value(.0f);
       value[bRec.channel] = factor * factor * (1 - F);
       return value;
@@ -172,7 +184,9 @@ public:
     return Spectrum(0.0f);
   }
 
-  Float getRoughness(const Intersection &its, int component) const { return .0f; }
+  Float getRoughness(const Intersection &its, int component) const {
+    return .0f;
+  }
 
   std::string toString() const {
     std::ostringstream oss;
@@ -197,7 +211,9 @@ private:
 };
 class SmoothCauchyShader : public Shader {
 public:
-  SmoothCauchyShader(Renderer *renderer) : Shader(renderer, EBSDFShader) { m_flags = ETransparent; }
+  SmoothCauchyShader(Renderer *renderer) : Shader(renderer, EBSDFShader) {
+    m_flags = ETransparent;
+  }
 
   Float getAlpha() const { return 0.3f; }
 
@@ -209,7 +225,8 @@ public:
         << "    return vec3(inv_pi * cosTheta(wo));" << endl
         << "}" << endl
         << endl
-        << "vec3 " << evalName << "_diffuse(vec2 uv, vec3 wi, vec3 wo) {" << endl
+        << "vec3 " << evalName << "_diffuse(vec2 uv, vec3 wi, vec3 wo) {"
+        << endl
         << "    return " << evalName << "(uv, wi, wo);" << endl
         << "}" << endl;
   }

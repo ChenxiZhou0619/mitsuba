@@ -35,3 +35,10 @@ add_mts_plugin(sdtracking   volumetric/sdtracking.cpp)
 # Radiance Cache
 add_mts_plugin(rcpt radiancecache/radiancecache.cpp)
 
+# Spectral rendering
+add_mts_plugin(hwpt 
+    spectral/hw.cpp 
+    spectral/spectralintegrator.cpp 
+    spectral/spectrum/spectrum.cpp
+    spectral/spectrum/rgbspectrum_srgb.cpp
+)

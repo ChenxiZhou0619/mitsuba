@@ -30,8 +30,8 @@ MTS_NAMESPACE_BEGIN
  * \brief Abstract integrator base-class; does not make any assumptions on
  * how radiance is computed.
  *
- * In Mitsuba, the different rendering techniques are collectively referred to as
- * \a integrators, since they perform integration over a high-dimensional
+ * In Mitsuba, the different rendering techniques are collectively referred to
+ * as \a integrators, since they perform integration over a high-dimensional
  * space. Each integrator represents a specific approach for solving
  * the light transport equation---usually favored in certain scenarios, but
  * at the same time affected by its own set of intrinsic limitations.
@@ -39,10 +39,11 @@ MTS_NAMESPACE_BEGIN
  * user-specified accuracy requirements and properties of the scene to be
  * rendered.
  *
- * This is the base class of all integrators; it does not make any assumptions on
- * how radiance is computed, which allows for many different kinds of implementations
- * ranging from software-based path tracing and Markov-Chain based techniques such
- * as Metropolis Light Transport up to hardware-accelerated rasterization.
+ * This is the base class of all integrators; it does not make any assumptions
+ * on how radiance is computed, which allows for many different kinds of
+ * implementations ranging from software-based path tracing and Markov-Chain
+ * based techniques such as Metropolis Light Transport up to
+ * hardware-accelerated rasterization.
  *
  * \ingroup librender
  */
@@ -58,20 +59,21 @@ public:
    * sensor and sample generator, which have been made available to all
    * local and remote workers.i
    */
-  virtual bool preprocess(const Scene *scene, RenderQueue *queue, const RenderJob *job,
-                          int sceneResID, int sensorResID, int samplerResID);
+  virtual bool preprocess(const Scene *scene, RenderQueue *queue,
+                          const RenderJob *job, int sceneResID, int sensorResID,
+                          int samplerResID);
 
   /**
    * \brief Render the scene as seen by the default sensor.
    *
    * Progress is tracked by sending status messages to a provided render queue.
-   * The parameter \c job is required to discern multiple render jobs occurring in
-   * parallel. The last three parameters are resource IDs of the associated
+   * The parameter \c job is required to discern multiple render jobs occurring
+   * in parallel. The last three parameters are resource IDs of the associated
    * scene, sensor and sample generator, which have been made available to
    * all local and remote workers. Returns true upon successful completion.
    */
-  virtual bool render(Scene *scene, RenderQueue *queue, const RenderJob *job, int sceneResID,
-                      int sensorResID, int samplerResID) = 0;
+  virtual bool render(Scene *scene, RenderQueue *queue, const RenderJob *job,
+                      int sceneResID, int sensorResID, int samplerResID) = 0;
 
   /**
    * \brief Cancel a running render job
@@ -92,8 +94,9 @@ public:
    * sensor and sample generator, which have been made available to all
    * local and remote workers.i
    */
-  virtual void postprocess(const Scene *scene, RenderQueue *queue, const RenderJob *job,
-                           int sceneResID, int sensorResID, int samplerResID);
+  virtual void postprocess(const Scene *scene, RenderQueue *queue,
+                           const RenderJob *job, int sceneResID,
+                           int sensorResID, int samplerResID);
 
   /**
    * \brief Configure the sample generator for use with this integrator
@@ -175,8 +178,9 @@ public:
     EVolumeRadiance = EDirectMediumRadiance | EIndirectMediumRadiance,
 
     /// Radiance query without emitted radiance, ray intersection required
-    ERadianceNoEmission = ESubsurfaceRadiance | EDirectSurfaceRadiance | EIndirectSurfaceRadiance |
-                          ECausticRadiance | EDirectMediumRadiance | EIndirectMediumRadiance |
+    ERadianceNoEmission = ESubsurfaceRadiance | EDirectSurfaceRadiance |
+                          EIndirectSurfaceRadiance | ECausticRadiance |
+                          EDirectMediumRadiance | EIndirectMediumRadiance |
                           EIntersection,
 
     /// Default radiance query, ray intersection required
@@ -196,17 +200,19 @@ public:
 
   /// Construct an invalid radiance query record
   inline RadianceQueryRecord()
-      : type(0), scene(NULL), sampler(NULL), medium(NULL), depth(0), alpha(0), dist(-1), extra(0) {}
+      : type(0), scene(NULL), sampler(NULL), medium(NULL), depth(0), alpha(0),
+        dist(-1), extra(0) {}
 
   /// Construct a radiance query record for the given scene and sampler
   inline RadianceQueryRecord(const Scene *scene, Sampler *sampler)
-      : type(0), scene(scene), sampler(sampler), medium(NULL), depth(0), alpha(0), dist(-1),
-        extra(0) {}
+      : type(0), scene(scene), sampler(sampler), medium(NULL), depth(0),
+        alpha(0), dist(-1), extra(0) {}
 
   /// Copy constructor
   inline RadianceQueryRecord(const RadianceQueryRecord &rRec)
-      : type(rRec.type), scene(rRec.scene), sampler(rRec.sampler), medium(rRec.medium),
-        depth(rRec.depth), alpha(rRec.alpha), dist(rRec.dist), extra(rRec.extra) {}
+      : type(rRec.type), scene(rRec.scene), sampler(rRec.sampler),
+        medium(rRec.medium), depth(rRec.depth), alpha(rRec.alpha),
+        dist(rRec.dist), extra(rRec.extra) {}
 
   /// Begin a new query of the given type
   inline void newQuery(int _type, const Medium *_medium) {
@@ -313,7 +319,8 @@ public:
    * \brief Sample the incident radiance along a ray. Also requires
    * a radiance query record, which makes this request more precise.
    */
-  virtual Spectrum Li(const RayDifferential &ray, RadianceQueryRecord &rRec) const = 0;
+  virtual Spectrum Li(const RayDifferential &ray,
+                      RadianceQueryRecord   &rRec) const = 0;
 
   /**
    * \brief Estimate the irradiance at a given surface point
@@ -338,8 +345,9 @@ public:
    * \param includeIndirect
    *     Include indirect illumination in the estimate?
    */
-  virtual Spectrum E(const Scene *scene, const Intersection &its, const Medium *medium,
-                     Sampler *sampler, int nSamples, bool includeIndirect) const;
+  virtual Spectrum E(const Scene *scene, const Intersection &its,
+                     const Medium *medium, Sampler *sampler, int nSamples,
+                     bool includeIndirect) const;
 
   /**
    * \brief Perform the main rendering task
@@ -352,8 +360,8 @@ public:
    * of that pixel's radiance value. For adaptive strategies, have a look at
    * the \c adaptive plugin, which is an extension of this class.
    */
-  bool render(Scene *scene, RenderQueue *queue, const RenderJob *job, int sceneResID,
-              int sensorResID, int samplerResID);
+  bool render(Scene *scene, RenderQueue *queue, const RenderJob *job,
+              int sceneResID, int sensorResID, int samplerResID);
 
   /**
    * This can be called asynchronously to cancel a running render job.
@@ -383,8 +391,9 @@ public:
    *    Reference to a boolean, which will be set to true when
    *    the user has requested that the program be stopped
    */
-  virtual void renderBlock(const Scene *scene, const Sensor *sensor, Sampler *sampler,
-                           ImageBlock *block, const bool &stop,
+  virtual void renderBlock(const Scene *scene, const Sensor *sensor,
+                           Sampler *sampler, ImageBlock *block,
+                           const bool                          &stop,
                            const std::vector<TPoint2<uint8_t>> &points) const;
 
   /**
@@ -455,44 +464,6 @@ protected:
   bool m_strictNormals;
   bool m_hideEmitters;
 };
-
-/*
- * \brief Base class for full-spectrum Monte Carlo integrators, which samples a hero-wavelength
- * for each traced ray
- */
-// class MTS_EXPORT_RENDER SpectralMonteCarloIntegrator : public SamplingIntegrator {
-// public:
-//   Spectrum Li(const RayDifferential &ray, RadianceQueryRecord &rRec) const final {
-//     // No implementation for SpectralMonteCarloIntegrator drived class
-//     printf("SpectralMonteCarloIntegrator shouldn't call this function\n");
-//     exit(1);
-//   }
-//
-//   virtual SampledSpectrum Li(const RayDifferential &ray, SampledWavelengths &lambda,
-//                              RadianceQueryRecord &rRec) const = 0;
-//
-//   /// Serialize
-//   void serialize(Stream *stream, InstanceManager *manager) const;
-//
-//   virtual void renderBlock(const Scene *scene, const Sensor *sensor, Sampler *sampler,
-//                            ImageBlock *block, const bool &stop,
-//                            const std::vector<TPoint2<uint8_t>> &points) const;
-//
-//   MTS_DECLARE_CLASS()
-// protected:
-//   // Create
-//   SpectralMonteCarloIntegrator(const Properties &props);
-//
-//   SpectralMonteCarloIntegrator(Stream *stream, InstanceManager *manager);
-//
-//   virtual ~SpectralMonteCarloIntegrator() {}
-//
-// protected:
-//   int  m_maxDepth;
-//   int  m_rrDepth;
-//   bool m_strictNormals;
-//   bool m_hideEmitters;
-// };
 
 MTS_NAMESPACE_END
 

@@ -2,6 +2,7 @@
 #include <mitsuba/render/scene.h>
 #include <mitsuba/render/renderproc.h>
 #include "cache/field.h"
+#include <mitsuba/core/plugin.h>
 // clang-format on
 
 MTS_NAMESPACE_BEGIN
@@ -25,6 +26,10 @@ public:
     MonteCarloIntegrator::serialize(stream, manager);
     Log(EError, "RadianceCache PT serialization is not support");
   }
+
+  virtual bool preprocess(const Scene *scene, RenderQueue *queue,
+                          const RenderJob *job, int sceneResID, int sensorResID,
+                          int samplerResID) override;
 
   virtual Spectrum Li(const RayDifferential &r,
                       RadianceQueryRecord   &rRec) const override {
@@ -109,6 +114,9 @@ public:
   }
 
 protected:
+  void train(Scene *scene, RenderQueue *queue, const RenderJob *job,
+             int sensorResID);
+
   Spectrum SampleNEE(const Scene *scene, DirectSamplingRecord &dRec,
                      const Vector &wi, Sampler *sampler, const BSDF *bsdf,
                      const Intersection *its) const {
@@ -166,8 +174,60 @@ protected:
 
 private:
   // gather the radiance data at each
+  uint32_t                        m_num_iterations = 3;
+  bool                            m_training       = false;
   std::unique_ptr<RadianceKDTree> m_radianceCache;
+  std::vector<RadianceRecord>     m_data;
 };
+
+bool RadianceCachePathTracer::preprocess(const Scene *scene, RenderQueue *queue,
+                                         const RenderJob *job, int sceneResID,
+                                         int sensorResID, int samplerResID) {
+
+  m_radianceCache->setAABB(scene->getAABB());
+  ref<Scheduler> sched = Scheduler::getInstance();
+  train(static_cast<Scene *>(sched->getResource(sceneResID)), queue, job,
+        sensorResID);
+  return true;
+}
+
+void RadianceCachePathTracer::train(Scene *scene, RenderQueue *queue,
+                                    const RenderJob *job, int sensorResID) {
+  m_training = true;
+
+  ref<Scheduler> sched = Scheduler::getInstance();
+  ref<Sensor> sensor   = static_cast<Sensor *>(sched->getResource(sensorResID));
+  ref<Scene>  train_scene = new Scene(scene);
+
+  const int trainSceneResID = sched->registerResource(train_scene);
+
+  for (int i = 0; i < m_num_iterations; ++i) {
+    Properties training_sampler_props = scene->getSampler()->getProperties();
+
+    training_sampler_props.removeProperty("sampleCount");
+    training_sampler_props.setSize("sampleCount", std::pow(2, i));
+
+    ref<Sampler> train_sampler =
+        static_cast<Sampler *>(PluginManager::getInstance()->createObject(
+            MTS_CLASS(Sampler), training_sampler_props));
+    train_sampler->configure();
+    train_scene->setSampler(train_sampler);
+
+    //* Create a sampler for each thread
+    std::vector<SerializableObject *> samplers(sched->getCoreCount());
+    for (size_t i = 0; i < sched->getCoreCount(); ++i) {
+      ref<Sampler> cloned_sampler = train_sampler->clone();
+      cloned_sampler->incRef();
+      samplers[i] = cloned_sampler.get();
+    }
+    int trainingSamplerResID = sched->registerMultiResource(samplers);
+    for (size_t i = 0; i < sched->getCoreCount(); ++i)
+      samplers[i]->decRef();
+
+    SamplingIntegrator::render(train_scene, queue, job, trainSceneResID,
+                               sensorResID, trainingSamplerResID);
+  }
+}
 
 MTS_IMPLEMENT_CLASS(RadianceCachePathTracer, false, MonteCarloIntegrator)
 MTS_EXPORT_PLUGIN(RadianceCachePathTracer, "Path tracer with radiance cache")

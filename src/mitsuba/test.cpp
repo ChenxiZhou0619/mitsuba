@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
   int rows = 256;
   int cols = 512;
 
-  SphericalHarmonic sh(32);
+  SphericalHarmonic sh(10);
   //* Fit shs
 
   // using monte-carlo to solve the sh cofficient
@@ -157,8 +157,6 @@ int main(int argc, char **argv) {
     pRec.time = 0;
     Float u1  = (Float)rand() / RAND_MAX;
     Float u2  = (Float)rand() / RAND_MAX;
-
-    Spectrum weight = emitter->sampleDirection(dRec, pRec, {u1, u2});
 
     Vector          v   = warp::squareToUniformSphere({u1, u2});
     Float           pdf = warp::squareToUniformSpherePdf();
@@ -186,12 +184,7 @@ int main(int argc, char **argv) {
       ray.o = Point(.0f);
       ray.d = Vector(sinPhi * sinTheta, cosTheta, -cosPhi * sinTheta);
 
-      // Float y = emitter->evalEnvironment(ray).getLuminance();
-      Float y = sh.eval(ray.d);
-      //      if (i == 250) {
-      //        printf("Stophere\n");
-      //      }
-      //      Float y            = SphericalHarmonic::Basis(1, 0, theta, phi);
+      Float y            = sh.eval(ray.d);
       data[j + i * cols] = y;
     }
   }

@@ -204,5 +204,6 @@ int main_2(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-  spectral::RGBToSpectrumTable::Init(); //
+  spectral::RGBToSpectrumTable::Init();
+  spectral::DenselySampledSpectrum::Init();
 }

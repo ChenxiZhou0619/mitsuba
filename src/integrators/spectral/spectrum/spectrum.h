@@ -8,6 +8,7 @@ namespace spectral {
 constexpr static size_t NSpectrumSamples = 4;
 constexpr static Float  LambdaMin        = 360;
 constexpr static Float  LambdaMax        = 830;
+constexpr static Float  CIE_Y_integral   = 106.856895;
 
 //! SampledSpectrum doesn't store the lambda information
 //! Make sure the different SampledSpectrum objects have same sampled
@@ -74,6 +75,60 @@ private:
   std::array<Float, NSpectrumSamples> values;
 };
 
+class PiecewiseLinearSpectrum {
+public:
+  PiecewiseLinearSpectrum() = delete;
+
+  PiecewiseLinearSpectrum(const Float *lambda, const Float *values,
+                          int nSamples)
+      : m_lambdas(nSamples), m_values(nSamples) {
+    for (int i = 0; i < nSamples; ++i) {
+      m_lambdas[i] = lambda[i];
+      m_values[i]  = values[i];
+    }
+  }
+
+  Float operator()(Float lambda) const;
+
+  SampledSpectrum sample(const SampledWavelengths &lambdas) const;
+
+private:
+  std::vector<Float> m_lambdas;
+  std::vector<Float> m_values;
+};
+
+class DenselySampledSpectrum {
+public:
+  DenselySampledSpectrum() = delete;
+
+  template <typename F>
+  DenselySampledSpectrum(F f, int lambdaMin = LambdaMin,
+                         int lambdaMax = LambdaMax)
+      : m_lambdaMin(lambdaMin), m_lambdaMax(lambdaMax) {
+    m_value = std::vector<Float>(m_lambdaMax - m_lambdaMin + 1);
+
+    for (int lambda = m_lambdaMin; lambda <= m_lambdaMax; ++lambda) {
+      m_value[lambda - m_lambdaMin] = f(lambda);
+    }
+  }
+
+  Float operator()(Float lambda) const;
+
+  SampledSpectrum sample(const SampledWavelengths &lambdas) const;
+
+  static void Init();
+
+public:
+  static std::unique_ptr<DenselySampledSpectrum> sCIE_X;
+  static std::unique_ptr<DenselySampledSpectrum> sCIE_Y;
+  static std::unique_ptr<DenselySampledSpectrum> sCIE_Z;
+
+private:
+  int                m_lambdaMin;
+  int                m_lambdaMax;
+  std::vector<Float> m_value;
+};
+
 /**
  * RGBAlbedoSpectrum, represented by a sigmoid polynomial
  */
@@ -131,6 +186,24 @@ enum RGBType {
 SampledSpectrum RGBToSampledSpectrum(const mitsuba::Spectrum  &rgb,
                                      const SampledWavelengths &lambdas,
                                      RGBType                   type);
+
+template <typename TSpectrum1, typename TSpectrum2>
+Float InnerProduct(const TSpectrum1 &spec1, const TSpectrum2 &spec2) {
+  Float product = .0f;
+  for (int lambda = LambdaMin; lambda <= LambdaMax; ++lambda) {
+    product += spec1((Float)lambda) * spec2((Float)lambda);
+  }
+  return product;
+}
+
+template <typename TSpectrum>
+std::tuple<Float, Float, Float> SpectrumToXYZ(const TSpectrum &spec) {
+  Float X = InnerProduct(*DenselySampledSpectrum::sCIE_X, spec);
+  Float Y = InnerProduct(*DenselySampledSpectrum::sCIE_Y, spec);
+  Float Z = InnerProduct(*DenselySampledSpectrum::sCIE_Z, spec);
+
+  return {X / CIE_Y_integral, Y / CIE_Y_integral, Z / CIE_Y_integral};
+}
 
 namespace math {
 template <typename Predicate>

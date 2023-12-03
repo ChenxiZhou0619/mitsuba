@@ -166,6 +166,7 @@ public:
       *terminated          = true;
       maj_rec->free_flight = tmax;
       maj_rec->tr_majorant = Spectrum(1.f);
+      maj_rec->pdf_flight  = 1.f;
       return;
     }
 
@@ -204,16 +205,17 @@ public:
         // Clamp the density
         Float density = std::min(SampleDensity(scatterP), majorantDensity);
 
-        maj_rec->sigma_maj = majorantSigmaT;
-        maj_rec->sigma_a   = density * m_sigmaA;
-        maj_rec->sigma_s   = density * m_sigmaS;
+        maj_rec->sigma_a = density * m_sigmaA;
+        maj_rec->sigma_s = density * m_sigmaS;
         if (type & ETrackingType::ENaiveDeltaTracking) {
           // Just use the extinction cofficient of hero channel
+          maj_rec->sigma_maj   = majorantSigmaT;
           maj_rec->sigma_n     = (majorantDensity - density) * m_sigmaT;
           maj_rec->tr_majorant = (-spectralOpacityThick).exp();
 
         } else if (type & ETrackingType::ESpectralTracking) {
           // Use the extinction cofficient among all channels
+          maj_rec->sigma_maj = Spectrum{pathSamplingCofficient};
           maj_rec->sigma_n =
               Spectrum{pathSamplingCofficient} - density * m_sigmaT;
           maj_rec->tr_majorant = Spectrum{std::exp(-sampledOpacityThick)};

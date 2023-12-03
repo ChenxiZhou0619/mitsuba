@@ -434,25 +434,59 @@ public:
     return oss.str();
   }
   //* Sample a free flight according to sigma_maj
+  //! Still bugs
   virtual void sampleTrMajorant(const RayDifferential &ray, Float u, Float tmax,
                                 ETrackingType type, bool *terminated,
                                 MajorantSamplingRecord *maj_rec) const {
-    Float extinction_maj = m_sigmaT[0];
-    Float distance       = -math::fastlog(1 - u) / extinction_maj;
+
+    const uint32_t heroChannel = ray.heroChannel;
+
+    Float pathSamplingCofficient;
+    if (type & ETrackingType::ENaiveDeltaTracking) {
+      // Just use the extinction cofficient of hero channel
+      pathSamplingCofficient = m_sigmaT[heroChannel];
+    } else if (type & ETrackingType::ESpectralTracking) {
+      // Use the extinction cofficient among all channels
+      pathSamplingCofficient = m_sigmaT.max() * 1.2f;
+    } else {
+      Log(EError, "Shouldn't arrive here");
+      exit(1);
+    }
+    Float distance = -math::fastlog(1 - u) / pathSamplingCofficient;
+
     if (distance > tmax) {
       *terminated          = true;
       maj_rec->free_flight = tmax;
-      maj_rec->tr_majorant = (m_sigmaT * -tmax).exp();
+      maj_rec->pdf_flight  = std::exp(-tmax * pathSamplingCofficient);
+      maj_rec->p           = ray(maj_rec->free_flight);
+
+      if (type & ETrackingType::ENaiveDeltaTracking) {
+        maj_rec->tr_majorant = (m_sigmaT * -tmax).exp();
+      } else if (type & ETrackingType::ESpectralTracking) {
+        maj_rec->tr_majorant =
+            Spectrum(std::exp(-tmax * pathSamplingCofficient));
+      }
+
     } else {
       *terminated          = false;
       maj_rec->free_flight = distance;
-      maj_rec->tr_majorant = (m_sigmaT * -distance).exp();
       maj_rec->sigma_a     = m_sigmaA;
       maj_rec->sigma_s     = m_sigmaS;
-      maj_rec->sigma_n     = Spectrum(.0f);
-      maj_rec->sigma_maj   = m_sigmaT;
       maj_rec->medium      = this;
       maj_rec->p           = ray(distance);
+      maj_rec->pdf_flight =
+          pathSamplingCofficient * std::exp(-distance * pathSamplingCofficient);
+
+      if (type & ETrackingType::ENaiveDeltaTracking) {
+        maj_rec->sigma_maj   = m_sigmaT;
+        maj_rec->sigma_n     = Spectrum(.0f);
+        maj_rec->tr_majorant = (m_sigmaT * -distance).exp();
+      } else if (type & ETrackingType::ESpectralTracking) {
+        maj_rec->sigma_maj = Spectrum(pathSamplingCofficient);
+        maj_rec->sigma_n   = Spectrum(pathSamplingCofficient) - m_sigmaT;
+        maj_rec->tr_majorant =
+            Spectrum(std::exp(-distance * pathSamplingCofficient));
+      }
     }
   }
 

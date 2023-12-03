@@ -342,10 +342,12 @@ protected:
     r_l *= r_p;
     r_u *= r_p * scatterPdf / dRec.pdf;
 
+    Spectrum L(.0f);
     if (!(emitter->isOnSurface() && dRec.measure == ESolidAngle))
-      return scatterVal * tr * Le / r_l;
+      L = scatterVal * tr * Le / r_l;
     else
-      return scatterVal * tr * Le / (r_l + r_u);
+      L = scatterVal * tr * Le / (r_l + r_u);
+    return L;
   }
 
   Float PDF_Nee(const Scene *scene, Point prev_p, Normal prev_n,

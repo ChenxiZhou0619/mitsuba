@@ -10,3 +10,6 @@
 [submodule "ext/matplotlib-cpp"]
 	path = ext/matplotlib-cpp
 	url = git@github.com:lava/matplotlib-cpp.git
+[submodule "ext/nanoflann"]
+	path = ext/nanoflann
+	url = git@github.com:jlblancoc/nanoflann.git

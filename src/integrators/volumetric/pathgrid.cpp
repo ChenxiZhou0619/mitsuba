@@ -5,20 +5,28 @@
 #include <mitsuba/render/renderproc.h>
 
 #include "pathgrid/pathgrid.h"
-// clang-format on
+#include "pathgrid/path.h"
 
 /**
  * A volumetric path-tracer using subpath reuse for multiple scattering
+ * 
+ * 
+ * ! m_maxDepth + 1 == the maximum vertices number (include camera and lightsource)
  */
 
+// clang-format on
 MTS_NAMESPACE_BEGIN
-
-constexpr uint32_t K = 4;
 
 class PathGrid : public MonteCarloIntegrator {
 public:
   PathGrid(const Properties &props) : MonteCarloIntegrator(props) {
-    //
+    m_training_spp = props.getInteger("training_spp", 16);
+    m_training     = false;
+
+    constexpr int cache_size = 1 << 20;
+
+    m_pathGrid = std::make_unique<pathgrid::PathGrid>(cache_size);
+    m_storage  = std::make_unique<pathgrid::PathStorage>(cache_size);
   }
 
   PathGrid(Stream *stream, InstanceManager *manager)
@@ -49,6 +57,9 @@ public:
     Normal prev_n;
     bool   specular_bounce = true;
 
+    pathgrid::PathInfo path(m_maxDepth);
+    path.addVertex(Point(.0f), Vector(.0f)); ///< dummy vertex
+
     while (true) {
       if (beta.isZero()) break;
 
@@ -76,60 +87,80 @@ public:
                   sigma_a, sigma_s, sigma_n, rng.randomFloat(), heroChannel);
 
               if (scatter_type & ECollisionType::Absorb) {
-                // TODO Add volumetric emission
                 terminated = true;
                 return false;
               } else if (scatter_type & ECollisionType::Scatter) {
+                // update the throughput
+                Float    pdf = tr_maj[heroChannel] * sigma_s[heroChannel];
+                Spectrum throughput = tr_maj * sigma_s / pdf;
+                beta *= throughput;
+                r_u *= throughput;
+                path.updateThroughput(throughput);
+
                 if (rRec.depth++ >= m_maxDepth) {
                   terminated = true;
 
-                  // TODO multiple-scattering should be added here
-                  uint32_t idxs[K];
+                  //* before terminate, connect to a subpath if rendering
+                  if (!m_training) {
+                    // TODO Actually a nee is also needed
+
+                    L +=
+                        beta * ReuseMultipleScattering(majRec.p) / (4.f * M_PI);
+                  }
 
                   return false;
                 }
 
-                // update the throughput
-                Float pdf = tr_maj[heroChannel] * sigma_s[heroChannel];
-                beta *= tr_maj * sigma_s / pdf;
-                r_u *= tr_maj * sigma_s / pdf;
-
                 DirectSamplingRecord dRec{majRec.p, .0f};
                 dRec.refN = Normal(.0f);
 
-                L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, medium,
-                                                rRec.sampler, r_u, heroChannel,
-                                                medium->getPhaseFunction(),
-                                                nullptr);
+                Spectrum contrib = SampleVolumetricNEE(
+                    scene, dRec, -ray.d, medium, rRec.sampler, r_u, heroChannel,
+                    medium->getPhaseFunction(), nullptr);
+                L += beta * contrib;
+                path.addContribution(contrib);
+
                 // sample a new direction
-                const PhaseFunction *phase = medium->getPhaseFunction();
-                MediumSamplingRecord
-                    mRec; // TODO mRec will be used in some phase
+                const PhaseFunction        *phase = medium->getPhaseFunction();
+                MediumSamplingRecord        mRec;
                 PhaseFunctionSamplingRecord pRec{mRec, -ray.d};
                 Float                       phasePdf;
                 Float phaseWeight = phase->sample(pRec, phasePdf, rRec.sampler);
 
+                Vector path_wi;
+                Point  path_p;
                 if (phaseWeight == .0f || phasePdf == .0f)
                   terminated = true;
                 else {
                   scattered       = true;
                   specular_bounce = false;
 
-                  beta     = beta * phaseWeight;
+                  beta *= phaseWeight;
+                  path.updateThroughput(Spectrum(phaseWeight));
+
                   r_l      = r_u / phasePdf;
                   ray      = Ray{majRec.p, pRec.wo, .0f};
                   ray.mint = Epsilon;
 
                   prev_p = majRec.p;
                   prev_n = Normal(.0f);
+
+                  path_wi = pRec.wo;
+                  path_p  = majRec.p;
                 }
+
+                //* Add a new vertex into path
+                path.addVertex(path_p, path_wi);
+
                 return false;
               } else if (scatter_type & ECollisionType::Null) {
                 //* A null scatter occurs, just keep tracking
                 Spectrum sigma_maj = majRec.sigma_maj;
 
-                Float pdf = tr_maj[heroChannel] * sigma_n[heroChannel];
-                beta *= tr_maj * sigma_n / pdf;
+                Float    pdf = tr_maj[heroChannel] * sigma_n[heroChannel];
+                Spectrum throughput = tr_maj * sigma_n / pdf;
+                beta *= throughput;
+                path.updateThroughput(throughput);
 
                 r_u *= tr_maj * sigma_n / pdf;
                 r_l *= tr_maj * sigma_maj / pdf;
@@ -147,21 +178,27 @@ public:
         if (terminated) break;
         if (scattered) continue;
 
-        beta *= T_maj / T_maj[heroChannel];
-        r_u *= T_maj / T_maj[heroChannel];
-        r_l *= T_maj / T_maj[heroChannel];
+        Spectrum throughput = T_maj / T_maj[heroChannel];
+        beta *= throughput;
+        r_u *= throughput;
+        r_l *= throughput;
+        path.updateThroughput(throughput);
       }
 
       if (!its.isValid()) {
         Spectrum Le = scene->evalEnvironment(ray);
         if (rRec.depth == 1 || specular_bounce) {
           // First hit or pure specular bounce
-          L += beta * Le / r_u.average();
+          Spectrum contrib = beta * Le / r_u.average();
+          L += beta * contrib;
+          path.addContribution(contrib);
         } else {
           // Apply MIS
-          Float p_l = PDF_Nee(scene, prev_p, prev_n, ray);
-          r_l       = r_l * p_l;
-          L += beta * Le / (r_u + r_l).average();
+          Float p_l        = PDF_Nee(scene, prev_p, prev_n, ray);
+          r_l              = r_l * p_l;
+          Spectrum contrib = Le / (r_u + r_l).average();
+          L += beta * contrib;
+          path.addContribution(contrib);
         }
         break;
       }
@@ -170,12 +207,16 @@ public:
         Spectrum Le = emitter->eval(its, -ray.d);
         if (rRec.depth == 1 || specular_bounce) {
           // First hit or pure specular bounce
-          L += beta * Le / r_u.average();
+          Spectrum contrib = Le / r_u.average();
+          L += beta * contrib;
+          path.addContribution(contrib);
         } else {
           // Apply MIS
-          Float p_l = PDF_Nee(scene, prev_p, prev_n, ray, &its);
-          r_l       = r_l * p_l;
-          L += beta * Le / (r_u + r_l).average();
+          Float p_l        = PDF_Nee(scene, prev_p, prev_n, ray, &its);
+          r_l              = r_l * p_l;
+          Spectrum contrib = Le / (r_u + r_l).average();
+          L += beta * contrib;
+          path.addContribution(contrib);
         }
       }
 
@@ -190,10 +231,13 @@ public:
       if (rRec.depth++ >= m_maxDepth) break;
 
       DirectSamplingRecord dRec(its);
-      if (bsdf->getType() & BSDF::ESmooth)
-        L += beta * SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium,
-                                        rRec.sampler, r_u, heroChannel, nullptr,
-                                        bsdf, &its);
+      if (bsdf->getType() & BSDF::ESmooth) {
+        Spectrum contrib =
+            SampleVolumetricNEE(scene, dRec, -ray.d, rRec.medium, rRec.sampler,
+                                r_u, heroChannel, nullptr, bsdf, &its);
+        L += beta * contrib;
+        path.addContribution(contrib);
+      }
 
       // BSDF sampling
       BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
@@ -206,6 +250,8 @@ public:
       if (woDotGeoN * Frame::cosTheta(bRec.wo) <= 0 && m_strictNormals) break;
 
       beta *= bsdfWeight;
+      path.updateThroughput(bsdfWeight);
+
       ray = Ray(its.p + Epsilon * wo, wo, Epsilon, INFINITY, ray.time);
       specular_bounce  = (bRec.sampledType &
                          (BSDF::EDeltaReflection | BSDF::EDeltaTransmission));
@@ -217,15 +263,25 @@ public:
 
       if (its.isMediumTransition()) rRec.medium = its.getTargetMedium(ray.d);
 
-      if (rRec.depth >= m_rrDepth) {
-        Float q = std::min(beta.max(), (Float)0.95f);
-        if (rRec.nextSample1D() >= q) break;
-        beta /= q;
-      }
+      // TODO disable rr for simplicity
+      //  if (rRec.depth >= m_rrDepth) {
+      //    Float q = std::min(beta.max(), (Float)0.95f);
+      //    if (rRec.nextSample1D() >= q) break;
+      //    beta /= q;
+      //  }
+    }
+
+    if (m_training) {
+      // add the path vertex into a storage
+      m_storage->addPath(path);
     }
 
     return L;
   }
+
+  virtual bool preprocess(const Scene *scene, RenderQueue *queue,
+                          const RenderJob *job, int sceneResID, int sensorResID,
+                          int samplerResID) override;
 
 protected:
   enum ECollisionType { Absorb = 0b0001, Scatter = 0b0010, Null = 0b0100 };
@@ -378,11 +434,89 @@ protected:
     return pdf;
   }
 
+  Spectrum ReuseMultipleScattering(Point p) const {
+    //* nearest search
+    const Float query_pt[3] = {p[0], p[1], p[2]};
+
+    size_t                num_result = 16;
+    std::vector<uint32_t> ret_idx(num_result);
+    std::vector<Float>    out_dist_sqr(num_result);
+
+    num_result = m_pathGrid->searchKNN(query_pt, num_result, ret_idx.data(),
+                                       out_dist_sqr.data());
+
+    Spectrum Ls(.0f);
+    for (int i = 0; i < num_result; ++i) {
+      auto [p_, v_, L_] = m_pathGrid->getData(ret_idx[0]);
+      Ls += L_;
+    }
+    return Ls / num_result;
+  }
+
 private:
-  std::unique_ptr<pathgrid::PathGrid> m_pathGrid;
+  //* Training variable
+  int  m_training_spp;
+  bool m_training;
+
+  std::unique_ptr<pathgrid::PathGrid>    m_pathGrid;
+  std::unique_ptr<pathgrid::PathStorage> m_storage;
 
   MTS_DECLARE_CLASS()
 };
+
+bool PathGrid::preprocess(const Scene *scene, RenderQueue *queue,
+                          const RenderJob *job, int sceneResID, int sensorResID,
+                          int samplerResID) {
+  //* Generate a set of subpaths stored in kd-trees
+
+  m_training = true;
+
+  ref<Scheduler> sched = Scheduler::getInstance();
+  ref<Sensor> sensor   = static_cast<Sensor *>(sched->getResource(sensorResID));
+  ref<Scene>  train_scene =
+      new Scene(static_cast<Scene *>(sched->getResource(sceneResID)));
+  const int trainSceneResID = sched->registerResource(train_scene);
+
+  // a loop ?
+  {
+    Properties training_sampler_props = scene->getSampler()->getProperties();
+
+    training_sampler_props.removeProperty("sampleCount");
+    training_sampler_props.setSize("sampleCount", m_training_spp);
+    ref<Sampler> train_sampler =
+        static_cast<Sampler *>(PluginManager::getInstance()->createObject(
+            MTS_CLASS(Sampler), training_sampler_props));
+    train_sampler->configure();
+    train_scene->setSampler(train_sampler);
+
+    //* Create a sampler for each thread
+    std::vector<SerializableObject *> samplers(sched->getCoreCount());
+    for (size_t i = 0; i < sched->getCoreCount(); ++i) {
+      ref<Sampler> cloned_sampler = train_sampler->clone();
+      cloned_sampler->incRef();
+      samplers[i] = cloned_sampler.get();
+    }
+    int training_sampler_resid = sched->registerMultiResource(samplers);
+    for (size_t i = 0; i < sched->getCoreCount(); ++i)
+      samplers[i]->decRef();
+
+    SamplingIntegrator::render(train_scene, queue, job, trainSceneResID,
+                               sensorResID, training_sampler_resid);
+
+    sched->unregisterResource(training_sampler_resid);
+    sensor->getFilm()->clear();
+
+    m_pathGrid->addStorage(*m_storage);
+    m_storage->clear();
+  }
+
+  m_pathGrid->init();
+
+  Log(EInfo, "Preprocess end");
+  m_training = false;
+
+  return true;
+}
 
 MTS_IMPLEMENT_CLASS(PathGrid, false, MonteCarloIntegrator)
 MTS_EXPORT_PLUGIN(PathGrid, "Volumetric PathGrid")

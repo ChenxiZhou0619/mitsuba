@@ -57,9 +57,10 @@ public:
   bool addPath(const PathInfo &path) {
     std::lock_guard<std::mutex> lock(mtx);
 
-    for (int i = 0; i < path.size; ++i) {
-      if (size++ >= max_size) return false;
+    for (int i = 1; i < path.size; ++i) {
+      if (path.contribs[i].getLuminance() < .1f) continue;
 
+      if (size++ >= max_size) return false;
       ps.emplace_back(path.ps[i]);
       wis.emplace_back(path.wis[i]);
       contribs.emplace_back(path.contribs[i]);

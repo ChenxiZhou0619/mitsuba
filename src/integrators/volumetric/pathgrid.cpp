@@ -21,9 +21,10 @@ class PathGrid : public MonteCarloIntegrator {
 public:
   PathGrid(const Properties &props) : MonteCarloIntegrator(props) {
     m_training_spp = props.getInteger("training_spp", 16);
+    m_iterations   = props.getInteger("iterations", 4);
     m_training     = false;
 
-    constexpr int cache_size = 1 << 20;
+    constexpr int cache_size = 1 << 26;
 
     m_pathGrid = std::make_unique<pathgrid::PathGrid>(cache_size);
     m_storage  = std::make_unique<pathgrid::PathStorage>(cache_size);
@@ -101,11 +102,12 @@ public:
                   terminated = true;
 
                   //* before terminate, connect to a subpath if rendering
-                  if (!m_training) {
+                  if (m_current_iterations != 0) {
                     // TODO Actually a nee is also needed
-
-                    L +=
-                        beta * ReuseMultipleScattering(majRec.p) / (4.f * M_PI);
+                    Spectrum contrib =
+                        ReuseMultipleScattering(majRec.p) / (4.f * M_PI);
+                    L += beta * contrib;
+                    path.addContribution(contrib);
                   }
 
                   return false;
@@ -438,7 +440,7 @@ protected:
     //* nearest search
     const Float query_pt[3] = {p[0], p[1], p[2]};
 
-    size_t                num_result = 16;
+    size_t                num_result = 4;
     std::vector<uint32_t> ret_idx(num_result);
     std::vector<Float>    out_dist_sqr(num_result);
 
@@ -457,6 +459,8 @@ private:
   //* Training variable
   int  m_training_spp;
   bool m_training;
+  int  m_iterations;
+  int  m_current_iterations = 0;
 
   std::unique_ptr<pathgrid::PathGrid>    m_pathGrid;
   std::unique_ptr<pathgrid::PathStorage> m_storage;
@@ -478,11 +482,13 @@ bool PathGrid::preprocess(const Scene *scene, RenderQueue *queue,
   const int trainSceneResID = sched->registerResource(train_scene);
 
   // a loop ?
-  {
+  for (m_current_iterations = 0; m_current_iterations < m_iterations;
+       ++m_current_iterations) {
     Properties training_sampler_props = scene->getSampler()->getProperties();
 
     training_sampler_props.removeProperty("sampleCount");
-    training_sampler_props.setSize("sampleCount", m_training_spp);
+    // training_sampler_props.setSize("sampleCount", m_training_spp);
+    training_sampler_props.setSize("sampleCount", m_current_iterations + 1);
     ref<Sampler> train_sampler =
         static_cast<Sampler *>(PluginManager::getInstance()->createObject(
             MTS_CLASS(Sampler), training_sampler_props));
@@ -508,9 +514,9 @@ bool PathGrid::preprocess(const Scene *scene, RenderQueue *queue,
 
     m_pathGrid->addStorage(*m_storage);
     m_storage->clear();
-  }
 
-  m_pathGrid->init();
+    m_pathGrid->init();
+  }
 
   Log(EInfo, "Preprocess end");
   m_training = false;

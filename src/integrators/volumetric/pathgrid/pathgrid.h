@@ -39,7 +39,15 @@ public:
     }
   }
 
-  void init() { m_kdtree = new kdtree(3, *this, {10}); }
+  void init() {
+
+    if (!m_kdtree) {
+      m_kdtree = new kdtree(3, *this, {10});
+    } else {
+      delete m_kdtree;
+      m_kdtree = new kdtree(3, *this, {10});
+    }
+  }
 
   inline size_t kdtree_get_point_count() const { return m_pts.size(); }
 

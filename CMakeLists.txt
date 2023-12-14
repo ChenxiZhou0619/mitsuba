@@ -27,7 +27,7 @@ set(CMAKE_CXX_FLAGS "-msse2 -fPIC")
 
 add_compile_definitions(
   GLEW_MX
-  MTS_DEBUG
+  MTS_DEBUGs
   SINGLE_PRECISION
   SPECTRUM_SAMPLES=3
   MTS_SSE MTS_HAS_COHERENT_RT)
@@ -38,6 +38,7 @@ include_directories(ext/openvdb/nanovdb)
 include_directories(ext/openvdb/openvdb)
 include_directories(ext/tbb/include)
 include_directories(ext/matplotlib-cpp)
+include_directories(ext/nanoflann/include)
 include_directories(/usr/include/python3.10)
 
 # Load the configure script

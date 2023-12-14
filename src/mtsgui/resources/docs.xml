@@ -262,6 +262,15 @@
         </descr>
     </plugin>
 
+    <plugin type="integrator" name="pathgrid"
+        readableName="Volumetric path tracer with path grid"
+        show="true" className="PathGrid" extends="MonteCarloIntegrator">
+        <descr>
+            None.
+        </descr>
+    </plugin>
+
+
     <plugin type="integrator" name="sdtracking"
         readableName="Spectral tracking"
         show="true" className="SDTrackingPT" extends="MonteCarloIntegrator">

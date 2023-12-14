@@ -31,6 +31,7 @@ target_link_libraries(pathguiding openpgl)
 # Volumetric path tracing
 add_mts_plugin(nmis         volumetric/nmis.cpp) 
 add_mts_plugin(sdtracking   volumetric/sdtracking.cpp)
+add_mts_plugin(pathgrid     volumetric/pathgrid.cpp)
 
 # Radiance Cache
 add_mts_plugin(rcpt radiancecache/radiancecache.cpp)

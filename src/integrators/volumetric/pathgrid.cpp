@@ -3,10 +3,8 @@
 #include <mitsuba/core/plugin.h>
 #include <mitsuba/render/scene.h>
 #include <mitsuba/render/renderproc.h>
-
-#include "pathgrid/pathgrid.h"
 #include "pathgrid/path.h"
-
+#include "pathgrid/uniformGrid.h"
 /**
  * A volumetric path-tracer using subpath reuse for multiple scattering
  * 
@@ -24,10 +22,11 @@ public:
     m_iterations   = props.getInteger("iterations", 4);
     m_training     = false;
 
-    constexpr int cache_size = 1 << 26;
-
-    m_pathGrid = std::make_unique<pathgrid::PathGrid>(cache_size);
-    m_storage  = std::make_unique<pathgrid::PathStorage>(cache_size);
+    Point bound_min = props.getPoint("bound_min", Point());
+    Point bound_max = props.getPoint("bound_max", Point());
+    int   res       = props.getInteger("resolution", 32);
+    m_grid = std::make_unique<pathgrid::UniformGrid>(AABB(bound_min, bound_max),
+                                                     Vector3i{res, res, res});
   }
 
   PathGrid(Stream *stream, InstanceManager *manager)
@@ -58,8 +57,10 @@ public:
     Normal prev_n;
     bool   specular_bounce = true;
 
+    Spectrum LS(.0f);
+
     pathgrid::PathInfo path(m_maxDepth);
-    path.addVertex(Point(.0f), Vector(.0f)); ///< dummy vertex
+    path.addVertex(Point(.0f), Vector(.0f), Spectrum(.0f)); ///< dummy vertex
 
     while (true) {
       if (beta.isZero()) break;
@@ -105,9 +106,12 @@ public:
                   if (m_current_iterations != 0) {
                     // TODO Actually a nee is also needed
                     Spectrum contrib =
-                        ReuseMultipleScattering(majRec.p) / (4.f * M_PI);
+                        ReuseMultipleScattering(majRec.p, sigma_a + sigma_s);
+
                     L += beta * contrib;
                     path.addContribution(contrib);
+                    LS = beta * contrib;
+                    LS = contrib;
                   }
 
                   return false;
@@ -152,7 +156,7 @@ public:
                 }
 
                 //* Add a new vertex into path
-                path.addVertex(path_p, path_wi);
+                path.addVertex(path_p, path_wi, sigma_s);
 
                 return false;
               } else if (scatter_type & ECollisionType::Null) {
@@ -275,10 +279,11 @@ public:
 
     if (m_training) {
       // add the path vertex into a storage
-      m_storage->addPath(path);
+      addPathToGrid(path);
     }
 
     return L;
+    // return LS;
   }
 
   virtual bool preprocess(const Scene *scene, RenderQueue *queue,
@@ -436,23 +441,60 @@ protected:
     return pdf;
   }
 
-  Spectrum ReuseMultipleScattering(Point p) const {
-    //* nearest search
-    const Float query_pt[3] = {p[0], p[1], p[2]};
+  Spectrum ReuseMultipleScattering(Point p, Spectrum sigma_t) const {
+    //
+    auto [weight, point, L] = m_grid->getShading(p);
 
-    size_t                num_result = 4;
-    std::vector<uint32_t> ret_idx(num_result);
-    std::vector<Float>    out_dist_sqr(num_result);
+    if (weight == .0f) return Spectrum(.0f);
 
-    num_result = m_pathGrid->searchKNN(query_pt, num_result, ret_idx.data(),
-                                       out_dist_sqr.data());
+    Float    fp_sqr = (0.25f * INV_PI) * (0.25f * INV_PI);
+    Float    G      = std::min(1.f / (point - p).lengthSquared(), 100.f);
+    Spectrum tr     = (-sigma_t * (point - p).length()).exp();
+    return fp_sqr * G * tr * L;
+  }
 
-    Spectrum Ls(.0f);
-    for (int i = 0; i < num_result; ++i) {
-      auto [p_, v_, L_] = m_pathGrid->getData(ret_idx[0]);
-      Ls += L_;
+  void addPathToGrid(const pathgrid::PathInfo &path) const {
+    // G * L
+    auto PHat = [](Spectrum L, Point p1, Point p2) {
+      return L.average() / std::max((p1 - p2).lengthSquared(), 0.1f);
+    };
+
+    //* Skip the first dummy vertex
+    for (int i = 1; i < path.size; ++i) {
+      // add yi into some voxels if valid
+      // a threshold is needed
+      const Spectrum &spec = path.contribs[i];
+      if (spec.getLuminance() < 1.f) continue;
+
+      //! Splat the cache into neighbor 7x7 voxels
+      const Point &p = path.ps[i];
+
+      if (i != 1) {
+        const Point &p_minus = path.ps[i - 1];
+        auto [min, max]      = m_grid->getNeighborVoxels(p_minus, 1);
+        for (int x = min.x; x <= max.x; ++x)
+          for (int y = min.y; y <= max.y; ++y)
+            for (int z = min.z; z <= max.z; ++z) {
+              Point         pVoxel = m_grid->getVoxelCenter(Vector3i{x, y, z});
+              Float         phat   = PHat(spec, pVoxel, p);
+              const Vector &w      = path.wis[i];
+              m_grid->addCandidate(p, w, spec, phat, 1.f, Vector3i{x, y, z});
+            }
+      }
+
+      if (i != path.size - 1) {
+        const Point &p_plus = path.ps[i + 1];
+        auto [min, max]     = m_grid->getNeighborVoxels(p_plus, 3);
+        for (int x = min.x; x <= max.x; ++x)
+          for (int y = min.y; y <= max.y; ++y)
+            for (int z = min.z; z <= max.z; ++z) {
+              Point         pVoxel = m_grid->getVoxelCenter(Vector3i{x, y, z});
+              Float         phat   = PHat(spec, pVoxel, p);
+              const Vector &w      = path.wis[i];
+              m_grid->addCandidate(p, w, spec, phat, 1.f, Vector3i{x, y, z});
+            }
+      }
     }
-    return Ls / num_result;
   }
 
 private:
@@ -462,8 +504,7 @@ private:
   int  m_iterations;
   int  m_current_iterations = 0;
 
-  std::unique_ptr<pathgrid::PathGrid>    m_pathGrid;
-  std::unique_ptr<pathgrid::PathStorage> m_storage;
+  std::unique_ptr<pathgrid::UniformGrid> m_grid;
 
   MTS_DECLARE_CLASS()
 };
@@ -488,7 +529,7 @@ bool PathGrid::preprocess(const Scene *scene, RenderQueue *queue,
 
     training_sampler_props.removeProperty("sampleCount");
     // training_sampler_props.setSize("sampleCount", m_training_spp);
-    training_sampler_props.setSize("sampleCount", m_current_iterations + 1);
+    training_sampler_props.setSize("sampleCount", 1);
     ref<Sampler> train_sampler =
         static_cast<Sampler *>(PluginManager::getInstance()->createObject(
             MTS_CLASS(Sampler), training_sampler_props));
@@ -512,10 +553,7 @@ bool PathGrid::preprocess(const Scene *scene, RenderQueue *queue,
     sched->unregisterResource(training_sampler_resid);
     sensor->getFilm()->clear();
 
-    m_pathGrid->addStorage(*m_storage);
-    m_storage->clear();
-
-    m_pathGrid->init();
+    m_grid->updateShading();
   }
 
   Log(EInfo, "Preprocess end");

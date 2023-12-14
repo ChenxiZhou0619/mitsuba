@@ -25,12 +25,12 @@ struct PathInfo {
     betas.reserve(max_size);
   }
 
-  void addVertex(Point p, Vector wi) {
+  void addVertex(Point p, Vector wi, Spectrum sigma_s) {
     size++;
     ps.emplace_back(p);
     wis.emplace_back(wi);
     contribs.emplace_back(Spectrum(.0f));
-    betas.emplace_back(Spectrum(1.f));
+    betas.emplace_back(Spectrum(sigma_s));
   }
 
   void addContribution(Spectrum contrib) {

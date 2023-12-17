@@ -9,6 +9,7 @@ add_mts_plugin(ptracer ptracer/ptracer.cpp ptracer/ptracer_proc.cpp)
 add_mts_plugin(photonmapper photonmapper/photonmapper.cpp photonmapper/bre.cpp)
 add_mts_plugin(ppm photonmapper/ppm.cpp)
 add_mts_plugin(sppm photonmapper/sppm.cpp)
+add_mts_plugin(vpm photonmapper/vpm.cpp)
 
 # Miscellaneous
 add_mts_plugin(vpl vpl/vpl.cpp)

@@ -35,11 +35,13 @@ Scene::Scene() : NetworkedObject(Properties()), m_blockSize(DEFAULT_BLOCKSIZE) {
   m_destinationFile = new fs::path();
 }
 
-Scene::Scene(const Properties &props) : NetworkedObject(props), m_blockSize(DEFAULT_BLOCKSIZE) {
+Scene::Scene(const Properties &props)
+    : NetworkedObject(props), m_blockSize(DEFAULT_BLOCKSIZE) {
   m_kdtree = new ShapeKDTree();
   /* kd-tree construction: Enable primitive clipping? Generally leads to a
     significant improvement of the resulting tree. */
-  if (props.hasProperty("kdClip")) m_kdtree->setClip(props.getBoolean("kdClip"));
+  if (props.hasProperty("kdClip"))
+    m_kdtree->setClip(props.getBoolean("kdClip"));
   /* kd-tree construction: Relative cost of a triangle intersection operation
      in the surface area heuristic. */
   if (props.hasProperty("kdIntersectionCost"))
@@ -48,24 +50,30 @@ Scene::Scene(const Properties &props) : NetworkedObject(props), m_blockSize(DEFA
      in the surface area heuristic. */
   if (props.hasProperty("kdTraversalCost"))
     m_kdtree->setTraversalCost(props.getFloat("kdTraversalCost"));
-  /* kd-tree construction: Bonus factor for cutting away regions of empty space */
+  /* kd-tree construction: Bonus factor for cutting away regions of empty space
+   */
   if (props.hasProperty("kdEmptySpaceBonus"))
     m_kdtree->setEmptySpaceBonus(props.getFloat("kdEmptySpaceBonus"));
   /* kd-tree construction: A kd-tree node containing this many or fewer
      primitives will not be split */
-  if (props.hasProperty("kdStopPrims")) m_kdtree->setStopPrims(props.getInteger("kdStopPrims"));
+  if (props.hasProperty("kdStopPrims"))
+    m_kdtree->setStopPrims(props.getInteger("kdStopPrims"));
   /* kd-tree construction: Maximum tree depth */
-  if (props.hasProperty("kdMaxDepth")) m_kdtree->setMaxDepth(props.getInteger("kdMaxDepth"));
+  if (props.hasProperty("kdMaxDepth"))
+    m_kdtree->setMaxDepth(props.getInteger("kdMaxDepth"));
   /* kd-tree construction: Specify the number of primitives, at which the
      builder will switch from (approximate) Min-Max binning to the accurate
      O(n log n) SAH-based optimization method. */
   if (props.hasProperty("kdExactPrimitiveThreshold"))
-    m_kdtree->setExactPrimitiveThreshold(props.getInteger("kdExactPrimitiveThreshold"));
+    m_kdtree->setExactPrimitiveThreshold(
+        props.getInteger("kdExactPrimitiveThreshold"));
   /* kd-tree construction: use multiple processors? */
   if (props.hasProperty("kdParallelBuild"))
     m_kdtree->setParallelBuild(props.getBoolean("kdParallelBuild"));
-  /* kd-tree construction: specify whether or not bad splits can be "retracted". */
-  if (props.hasProperty("kdRetract")) m_kdtree->setRetract(props.getBoolean("kdRetract"));
+  /* kd-tree construction: specify whether or not bad splits can be "retracted".
+   */
+  if (props.hasProperty("kdRetract"))
+    m_kdtree->setRetract(props.getBoolean("kdRetract"));
   /* kd-tree construction: Set the number of bad refines allowed to happen
      in succession before a leaf node will be created.*/
   if (props.hasProperty("kdMaxBadRefines"))
@@ -97,7 +105,8 @@ Scene::Scene(Scene *scene) : NetworkedObject(Properties()) {
   m_degenerateEmitters = scene->m_degenerateEmitters;
 }
 
-Scene::Scene(Stream *stream, InstanceManager *manager) : NetworkedObject(stream, manager) {
+Scene::Scene(Stream *stream, InstanceManager *manager)
+    : NetworkedObject(stream, manager) {
   m_kdtree = new ShapeKDTree();
   m_kdtree->setQueryCost(stream->readFloat());
   m_kdtree->setTraversalCost(stream->readFloat());
@@ -124,7 +133,8 @@ Scene::Scene(Stream *stream, InstanceManager *manager) : NetworkedObject(stream,
   count = stream->readSize();
   m_specialShapes.reserve(count);
   for (size_t i = 0; i < count; ++i)
-    m_specialShapes.push_back(static_cast<Shape *>(manager->getInstance(stream)));
+    m_specialShapes.push_back(
+        static_cast<Shape *>(manager->getInstance(stream)));
   count = stream->readSize();
   m_meshes.reserve(count);
   for (size_t i = 0; i < count; ++i)
@@ -144,15 +154,18 @@ Scene::Scene(Stream *stream, InstanceManager *manager) : NetworkedObject(stream,
   count = stream->readSize();
   m_ssIntegrators.reserve(count);
   for (size_t i = 0; i < count; ++i)
-    m_ssIntegrators.push_back(static_cast<Subsurface *>(manager->getInstance(stream)));
+    m_ssIntegrators.push_back(
+        static_cast<Subsurface *>(manager->getInstance(stream)));
   count = stream->readSize();
   m_objects.reserve(count);
   for (size_t i = 0; i < count; ++i)
-    m_objects.push_back(static_cast<ConfigurableObject *>(manager->getInstance(stream)));
+    m_objects.push_back(
+        static_cast<ConfigurableObject *>(manager->getInstance(stream)));
   count = stream->readSize();
   m_netObjects.reserve(count);
   for (size_t i = 0; i < count; ++i)
-    m_netObjects.push_back(static_cast<NetworkedObject *>(manager->getInstance(stream)));
+    m_netObjects.push_back(
+        static_cast<NetworkedObject *>(manager->getInstance(stream)));
 
   initialize();
 }
@@ -204,7 +217,8 @@ void Scene::serialize(Stream *stream, InstanceManager *manager) const {
     manager->serialize(stream, m_emitters[i].get());
 
   stream->writeSize(m_media.size());
-  for (ref_vector<Medium>::const_iterator it = m_media.begin(); it != m_media.end(); ++it)
+  for (ref_vector<Medium>::const_iterator it = m_media.begin();
+       it != m_media.end(); ++it)
     manager->serialize(stream, it->get());
 
   stream->writeSize(m_ssIntegrators.size());
@@ -213,8 +227,8 @@ void Scene::serialize(Stream *stream, InstanceManager *manager) const {
     manager->serialize(stream, it->get());
 
   stream->writeSize(m_objects.size());
-  for (ref_vector<ConfigurableObject>::const_iterator it = m_objects.begin(); it != m_objects.end();
-       ++it)
+  for (ref_vector<ConfigurableObject>::const_iterator it = m_objects.begin();
+       it != m_objects.end(); ++it)
     manager->serialize(stream, it->get());
 
   stream->writeSize(m_netObjects.size());
@@ -233,9 +247,10 @@ void Scene::bindUsedResources(ParallelProcess *proc) const {
     it->get()->bindUsedResources(proc);
 }
 
-void Scene::wakeup(ConfigurableObject *, std::map<std::string, SerializableObject *> &params) {
-  for (ref_vector<NetworkedObject>::iterator it = m_netObjects.begin(); it != m_netObjects.end();
-       ++it)
+void Scene::wakeup(ConfigurableObject *,
+                   std::map<std::string, SerializableObject *> &params) {
+  for (ref_vector<NetworkedObject>::iterator it = m_netObjects.begin();
+       it != m_netObjects.end(); ++it)
     (*it)->wakeup(this, params);
 }
 
@@ -252,7 +267,8 @@ void Scene::removeSensor(Sensor *sensor) {
 
 void Scene::addSensor(Sensor *sensor) {
   ref<Sensor> newSensor = sensor;
-  if (!newSensor || std::find(m_sensors.begin(), m_sensors.end(), newSensor) != m_sensors.end())
+  if (!newSensor || std::find(m_sensors.begin(), m_sensors.end(), newSensor) !=
+                        m_sensors.end())
     return;
   m_sensors.push_back(newSensor);
 }
@@ -260,8 +276,9 @@ void Scene::addSensor(Sensor *sensor) {
 void Scene::configure() {
   if (m_integrator == NULL) {
     /* Create a direct integrator by default */
-    m_integrator = static_cast<Integrator *>(
-        PluginManager::getInstance()->createObject(MTS_CLASS(Integrator), Properties("direct")));
+    m_integrator =
+        static_cast<Integrator *>(PluginManager::getInstance()->createObject(
+            MTS_CLASS(Integrator), Properties("direct")));
     m_integrator->configure();
   }
 
@@ -274,21 +291,24 @@ void Scene::configure() {
       /* Create a perspective camera with a 45 deg. field of view
          and positioned so that it can see the entire scene */
       AABB aabb;
-      for (ref_vector<Shape>::iterator it = m_shapes.begin(); it != m_shapes.end(); ++it)
+      for (ref_vector<Shape>::iterator it = m_shapes.begin();
+           it != m_shapes.end(); ++it)
         aabb.expandBy(it->get()->getAABB());
       if (aabb.isValid()) {
-        Point  center        = aabb.getCenter();
-        Vector extents       = aabb.getExtents();
-        Float  maxExtentsXY  = std::max(extents.x, extents.y);
-        Float  distance      = maxExtentsXY / (2.0f * std::tan(45 * .5f * M_PI / 180));
-        Float  maxExtentsXYZ = std::max(extents.z, maxExtentsXY);
+        Point  center       = aabb.getCenter();
+        Vector extents      = aabb.getExtents();
+        Float  maxExtentsXY = std::max(extents.x, extents.y);
+        Float  distance =
+            maxExtentsXY / (2.0f * std::tan(45 * .5f * M_PI / 180));
+        Float maxExtentsXYZ = std::max(extents.z, maxExtentsXY);
 
         props.setFloat("farClip", maxExtentsXYZ * 5 + distance);
         props.setFloat("nearClip", distance / 100);
 
         props.setFloat("focusDistance", distance + extents.z / 2);
         props.setTransform("toWorld",
-                           Transform::translate(Vector(center.x, center.y, aabb.min.z - distance)));
+                           Transform::translate(Vector(center.x, center.y,
+                                                       aabb.min.z - distance)));
       }
       Sensor *sensor = static_cast<Sensor *>(
           PluginManager::getInstance()->createObject(MTS_CLASS(Sensor), props));
@@ -323,7 +343,8 @@ void Scene::initialize() {
     if (primitiveCount != effPrimitiveCount) {
       Log(EDebug,
           "Scene contains " SIZE_T_FMT " primitives. Due to "
-          "instancing or other kinds of procedural geometry, the effective number of primitives "
+          "instancing or other kinds of procedural geometry, the effective "
+          "number of primitives "
           "is " SIZE_T_FMT ".",
           primitiveCount, effPrimitiveCount);
     }
@@ -350,17 +371,20 @@ void Scene::initialize() {
 
       Properties skyProps("sunsky");
       skyProps.setFloat("scale", 2);
-      skyProps.setTransform("toWorld", Transform::rotate(Vector(0, 1, 0), -120.0f));
+      skyProps.setTransform("toWorld",
+                            Transform::rotate(Vector(0, 1, 0), -120.0f));
       skyProps.setBoolean("extend", true);
       skyProps.setFloat("sunRadiusScale", 15);
-      ref<Emitter> emitter = static_cast<Emitter *>(
-          PluginManager::getInstance()->createObject(MTS_CLASS(Emitter), skyProps));
+      ref<Emitter> emitter =
+          static_cast<Emitter *>(PluginManager::getInstance()->createObject(
+              MTS_CLASS(Emitter), skyProps));
       addChild(emitter);
       emitter->configure();
     }
 
     /* Calculate a discrete PDF to importance sample emitters */
-    for (ref_vector<Emitter>::iterator it = m_emitters.begin(); it != m_emitters.end(); ++it)
+    for (ref_vector<Emitter>::iterator it = m_emitters.begin();
+         it != m_emitters.end(); ++it)
       m_emitterPDF.append(it->get()->getSamplingWeight());
 
     m_emitterPDF.normalize();
@@ -383,52 +407,59 @@ void Scene::initializeBidirectional() {
   }
 
   AABB aabb(m_aabb);
-  for (ref_vector<Emitter>::iterator it = m_emitters.begin(); it != m_emitters.end(); ++it) {
+  for (ref_vector<Emitter>::iterator it = m_emitters.begin();
+       it != m_emitters.end(); ++it) {
     Emitter *emitter = it->get();
 
     ref<Shape> shape = emitter->createShape(this);
     if (shape != NULL) m_specialShapes.push_back(shape);
 
     aabb.expandBy(emitter->getAABB());
-    if (!(emitter->getType() & Emitter::EDeltaPosition)) m_degenerateEmitters = false;
+    if (!(emitter->getType() & Emitter::EDeltaPosition))
+      m_degenerateEmitters = false;
   }
   m_aabb = aabb;
 }
 
-bool Scene::preprocess(RenderQueue *queue, const RenderJob *job, int sceneResID, int sensorResID,
-                       int samplerResID) {
+bool Scene::preprocess(RenderQueue *queue, const RenderJob *job, int sceneResID,
+                       int sensorResID, int samplerResID) {
 
   initialize();
 
   /* Pre-process step for the main scene integrator */
-  if (!m_integrator->preprocess(this, queue, job, sceneResID, sensorResID, samplerResID))
+  if (!m_integrator->preprocess(this, queue, job, sceneResID, sensorResID,
+                                samplerResID))
     return false;
 
-  /* Pre-process step for all sub-surface integrators (each one in independence) */
-  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin(); it != m_ssIntegrators.end();
-       ++it)
+  /* Pre-process step for all sub-surface integrators (each one in independence)
+   */
+  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin();
+       it != m_ssIntegrators.end(); ++it)
     (*it)->setActive(false);
 
-  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin(); it != m_ssIntegrators.end();
-       ++it)
-    if (!(*it)->preprocess(this, queue, job, sceneResID, sensorResID, samplerResID)) return false;
+  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin();
+       it != m_ssIntegrators.end(); ++it)
+    if (!(*it)->preprocess(this, queue, job, sceneResID, sensorResID,
+                           samplerResID))
+      return false;
 
-  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin(); it != m_ssIntegrators.end();
-       ++it)
+  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin();
+       it != m_ssIntegrators.end(); ++it)
     (*it)->setActive(true);
 
   return true;
 }
 
-bool Scene::render(RenderQueue *queue, const RenderJob *job, int sceneResID, int sensorResID,
-                   int samplerResID) {
+bool Scene::render(RenderQueue *queue, const RenderJob *job, int sceneResID,
+                   int sensorResID, int samplerResID) {
   m_sensor->getFilm()->clear();
-  return m_integrator->render(this, queue, job, sceneResID, sensorResID, samplerResID);
+  return m_integrator->render(this, queue, job, sceneResID, sensorResID,
+                              samplerResID);
 }
 
 void Scene::cancel() {
-  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin(); it != m_ssIntegrators.end();
-       ++it)
+  for (ref_vector<Subsurface>::iterator it = m_ssIntegrators.begin();
+       it != m_ssIntegrators.end(); ++it)
     (*it)->cancel();
   m_integrator->cancel();
 }
@@ -437,13 +468,16 @@ void Scene::flush(RenderQueue *queue, const RenderJob *job) {
   m_sensor->getFilm()->develop(this, queue->getRenderTime(job));
 }
 
-void Scene::setDestinationFile(const fs::path &name) { *m_destinationFile = name; }
+void Scene::setDestinationFile(const fs::path &name) {
+  *m_destinationFile = name;
+}
 
 void Scene::setSourceFile(const fs::path &name) { *m_sourceFile = name; }
 
-void Scene::postprocess(RenderQueue *queue, const RenderJob *job, int sceneResID, int sensorResID,
-                        int samplerResID) {
-  m_integrator->postprocess(this, queue, job, sceneResID, sensorResID, samplerResID);
+void Scene::postprocess(RenderQueue *queue, const RenderJob *job,
+                        int sceneResID, int sensorResID, int samplerResID) {
+  m_integrator->postprocess(this, queue, job, sceneResID, sensorResID,
+                            samplerResID);
   m_sensor->getFilm()->develop(this, queue->getRenderTime(job));
 }
 
@@ -457,9 +491,11 @@ void Scene::addChild(const std::string &name, ConfigurableObject *child) {
   if (cClass->derivesFrom(MTS_CLASS(Sensor))) {
     m_sensors.push_back(static_cast<Sensor *>(child));
   } else if (cClass->derivesFrom(MTS_CLASS(Integrator))) {
-    AssertEx(m_integrator == NULL, "There can only be one integrator per scene");
+    AssertEx(m_integrator == NULL,
+             "There can only be one integrator per scene");
     m_integrator = static_cast<Integrator *>(child);
-  } else if (cClass->derivesFrom(MTS_CLASS(Texture)) || cClass->derivesFrom(MTS_CLASS(BSDF)) ||
+  } else if (cClass->derivesFrom(MTS_CLASS(Texture)) ||
+             cClass->derivesFrom(MTS_CLASS(BSDF)) ||
              cClass->derivesFrom(MTS_CLASS(Subsurface)) ||
              cClass->derivesFrom(MTS_CLASS(PhaseFunction))) {
     m_objects.push_back(static_cast<ConfigurableObject *>(child));
@@ -508,12 +544,12 @@ void Scene::addChild(const std::string &name, ConfigurableObject *child) {
     for (size_t i = 0; i < shapes.size(); ++i)
       addChild(shapes[i]);
 
-    for (ref_vector<ConfigurableObject>::iterator it = refObjects.begin(); it != refObjects.end();
-         ++it)
+    for (ref_vector<ConfigurableObject>::iterator it = refObjects.begin();
+         it != refObjects.end(); ++it)
       addChild(it->get());
 
-    for (ref_vector<Medium>::iterator it = scene->getMedia().begin(); it != scene->getMedia().end();
-         ++it)
+    for (ref_vector<Medium>::iterator it = scene->getMedia().begin();
+         it != scene->getMedia().end(); ++it)
       addChild(it->get());
 
     if (scene->getIntegrator() != NULL) addChild(scene->getIntegrator());
@@ -541,7 +577,8 @@ void Scene::addShape(Shape *shape) {
       m_ssIntegrators.push_back(shape->getSubsurface());
     }
 
-    Medium *iMedium = shape->getInteriorMedium(), *eMedium = shape->getExteriorMedium();
+    Medium *iMedium = shape->getInteriorMedium(),
+           *eMedium = shape->getExteriorMedium();
 
     if (eMedium != NULL) m_media.push_back(eMedium);
 
@@ -563,16 +600,26 @@ std::string Scene::toString() const {
       << "  sampler = " << indent(m_sampler.toString()) << "," << endl
       << "  integrator = " << indent(m_integrator.toString()) << "," << endl
       << "  kdtree = " << indent(m_kdtree.toString()) << "," << endl
-      << "  environmentEmitter = " << indent(m_environmentEmitter.toString()) << "," << endl
-      << "  shapes = " << indent(containerToString(m_shapes.begin(), m_shapes.end())) << "," << endl
-      << "  emitters = " << indent(containerToString(m_emitters.begin(), m_emitters.end())) << ","
+      << "  environmentEmitter = " << indent(m_environmentEmitter.toString())
+      << "," << endl
+      << "  shapes = "
+      << indent(containerToString(m_shapes.begin(), m_shapes.end())) << ","
       << endl
-      << "  media = " << indent(containerToString(m_media.begin(), m_media.end())) << "," << endl
-      << "  sensors = " << indent(containerToString(m_sensors.begin(), m_sensors.end())) << ","
+      << "  emitters = "
+      << indent(containerToString(m_emitters.begin(), m_emitters.end())) << ","
+      << endl
+      << "  media = "
+      << indent(containerToString(m_media.begin(), m_media.end())) << ","
+      << endl
+      << "  sensors = "
+      << indent(containerToString(m_sensors.begin(), m_sensors.end())) << ","
       << endl
       << "  ssIntegrators = "
-      << indent(containerToString(m_ssIntegrators.begin(), m_ssIntegrators.end())) << "," << endl
-      << "  objects = " << indent(containerToString(m_objects.begin(), m_objects.end())) << endl
+      << indent(
+             containerToString(m_ssIntegrators.begin(), m_ssIntegrators.end()))
+      << "," << endl
+      << "  objects = "
+      << indent(containerToString(m_objects.begin(), m_objects.end())) << endl
       << "]";
   return oss.str();
 }
@@ -581,17 +628,19 @@ std::string Scene::toString() const {
 //                 Ray tracing and transmittance computations
 // ===========================================================================
 
-static StatsCounter mediumInconsistencies("General", "Detected medium inconsistencies");
+static StatsCounter mediumInconsistencies("General",
+                                          "Detected medium inconsistencies");
 
-Spectrum Scene::evalTransmittance(const Point &p1, bool p1OnSurface, const Point &p2,
-                                  bool p2OnSurface, Float time, const Medium *medium,
-                                  int &interactions, Sampler *sampler) const {
+Spectrum Scene::evalTransmittance(const Point &p1, bool p1OnSurface,
+                                  const Point &p2, bool p2OnSurface, Float time,
+                                  const Medium *medium, int &interactions,
+                                  Sampler *sampler) const {
   Vector d         = p2 - p1;
   Float  remaining = d.length();
   d /= remaining;
 
-  Float        lengthFactor = p2OnSurface ? (1 - ShadowEpsilon) : 1;
-  Ray          ray(p1, d, p1OnSurface ? Epsilon : 0, remaining * lengthFactor, time);
+  Float lengthFactor = p2OnSurface ? (1 - ShadowEpsilon) : 1;
+  Ray   ray(p1, d, p1OnSurface ? Epsilon : 0, remaining * lengthFactor, time);
   Spectrum     transmittance(1.0f);
   Intersection its;
   int          maxInteractions = interactions;
@@ -599,15 +648,17 @@ Spectrum Scene::evalTransmittance(const Point &p1, bool p1OnSurface, const Point
 
   while (remaining > 0) {
     Normal n;
-    bool   surface = rayIntersect(ray, its.t, its.shape, its.geoFrame.n, its.uv);
+    bool surface = rayIntersect(ray, its.t, its.shape, its.geoFrame.n, its.uv);
 
-    if (surface && (interactions == maxInteractions || !(its.getBSDF()->getType() & BSDF::ENull))) {
+    if (surface && (interactions == maxInteractions ||
+                    !(its.getBSDF()->getType() & BSDF::ENull))) {
       /* Encountered an occluder -- zero transmittance. */
       return Spectrum(0.0f);
     }
 
     if (medium)
-      transmittance *= medium->evalTransmittance(Ray(ray, 0, std::min(its.t, remaining)), sampler);
+      transmittance *= medium->evalTransmittance(
+          Ray(ray, 0, std::min(its.t, remaining)), sampler);
 
     if (!surface || transmittance.isZero()) break;
 
@@ -652,7 +703,8 @@ bool Scene::rayIntersectAll(const Ray &ray) const {
 
   Float mint = ray.mint;
   if (mint == Epsilon)
-    mint *= std::max(std::max(std::max(std::abs(ray.o.x), std::abs(ray.o.y)), std::abs(ray.o.z)),
+    mint *= std::max(std::max(std::max(std::abs(ray.o.x), std::abs(ray.o.y)),
+                              std::abs(ray.o.z)),
                      Epsilon);
 
   for (size_t i = 0; i < m_specialShapes.size(); ++i) {
@@ -662,8 +714,8 @@ bool Scene::rayIntersectAll(const Ray &ray) const {
   return false;
 }
 
-bool Scene::rayIntersectAll(const Ray &ray, Float &t, ConstShapePtr &shapePtr, Normal &n,
-                            Point2 &uv) const {
+bool Scene::rayIntersectAll(const Ray &ray, Float &t, ConstShapePtr &shapePtr,
+                            Normal &n, Point2 &uv) const {
   bool result = rayIntersect(ray, t, shapePtr, n, uv);
   if (m_specialShapes.size() == 0) return result;
 
@@ -672,7 +724,8 @@ bool Scene::rayIntersectAll(const Ray &ray, Float &t, ConstShapePtr &shapePtr, N
 
   Float mint = ray.mint;
   if (mint == Epsilon)
-    mint *= std::max(std::max(std::max(std::abs(ray.o.x), std::abs(ray.o.y)), std::abs(ray.o.z)),
+    mint *= std::max(std::max(std::max(std::abs(ray.o.x), std::abs(ray.o.y)),
+                              std::abs(ray.o.z)),
                      Epsilon);
 
   for (size_t i = 0; i < m_specialShapes.size(); ++i) {
@@ -702,7 +755,8 @@ bool Scene::rayIntersectAll(const Ray &ray, Intersection &its) const {
   Float   maxt = result ? its.t : ray.maxt;
   Float   mint = ray.mint;
   if (mint == Epsilon)
-    mint *= std::max(std::max(std::max(std::abs(ray.o.x), std::abs(ray.o.y)), std::abs(ray.o.z)),
+    mint *= std::max(std::max(std::max(std::abs(ray.o.x), std::abs(ray.o.y)),
+                              std::abs(ray.o.z)),
                      Epsilon);
   Float tempT;
 
@@ -719,15 +773,17 @@ bool Scene::rayIntersectAll(const Ray &ray, Intersection &its) const {
   return result;
 }
 
-Spectrum Scene::evalTransmittanceAll(const Point &p1, bool p1OnSurface, const Point &p2,
-                                     bool p2OnSurface, Float time, const Medium *medium,
-                                     int &interactions, Sampler *sampler) const {
+Spectrum Scene::evalTransmittanceAll(const Point &p1, bool p1OnSurface,
+                                     const Point &p2, bool p2OnSurface,
+                                     Float time, const Medium *medium,
+                                     int     &interactions,
+                                     Sampler *sampler) const {
   Vector d         = p2 - p1;
   Float  remaining = d.length();
   d /= remaining;
 
-  Float        lengthFactor = p2OnSurface ? (1 - ShadowEpsilon) : 1;
-  Ray          ray(p1, d, p1OnSurface ? Epsilon : 0, remaining * lengthFactor, time);
+  Float lengthFactor = p2OnSurface ? (1 - ShadowEpsilon) : 1;
+  Ray   ray(p1, d, p1OnSurface ? Epsilon : 0, remaining * lengthFactor, time);
   Spectrum     transmittance(1.0f);
   Intersection its;
   int          maxInteractions = interactions;
@@ -735,15 +791,18 @@ Spectrum Scene::evalTransmittanceAll(const Point &p1, bool p1OnSurface, const Po
 
   while (remaining > 0) {
     Normal n;
-    bool   surface = rayIntersectAll(ray, its.t, its.shape, its.geoFrame.n, its.uv);
+    bool   surface =
+        rayIntersectAll(ray, its.t, its.shape, its.geoFrame.n, its.uv);
 
-    if (surface && (interactions == maxInteractions || !(its.getBSDF()->getType() & BSDF::ENull))) {
+    if (surface && (interactions == maxInteractions ||
+                    !(its.getBSDF()->getType() & BSDF::ENull))) {
       /* Encountered an occluder -- zero transmittance. */
       return Spectrum(0.0f);
     }
 
     if (medium)
-      transmittance *= medium->evalTransmittance(Ray(ray, 0, std::min(its.t, remaining)), sampler);
+      transmittance *= medium->evalTransmittance(
+          Ray(ray, 0, std::min(its.t, remaining)), sampler);
 
     if (!surface || transmittance.isZero()) break;
 
@@ -783,7 +842,8 @@ Spectrum Scene::evalTransmittanceAll(const Point &p1, bool p1OnSurface, const Po
 //                Emission and direct illumination sampling
 // ===========================================================================
 
-Spectrum Scene::sampleEmitterDirect(DirectSamplingRecord &dRec, const Point2 &_sample,
+Spectrum Scene::sampleEmitterDirect(DirectSamplingRecord &dRec,
+                                    const Point2         &_sample,
                                     bool testVisibility) const {
   Point2 sample(_sample);
 
@@ -795,7 +855,8 @@ Spectrum Scene::sampleEmitterDirect(DirectSamplingRecord &dRec, const Point2 &_s
 
   if (dRec.pdf != 0) {
     if (testVisibility) {
-      Ray ray(dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon), dRec.time);
+      Ray ray(dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon),
+              dRec.time);
       if (m_kdtree->rayIntersect(ray)) return Spectrum(0.0f);
     }
     dRec.object = emitter;
@@ -807,9 +868,11 @@ Spectrum Scene::sampleEmitterDirect(DirectSamplingRecord &dRec, const Point2 &_s
   }
 }
 
-Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const Medium *medium,
-                                              int &interactions, const Point2 &_sample,
-                                              Sampler *sampler) const {
+Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec,
+                                              const Medium         *medium,
+                                              int          &interactions,
+                                              const Point2 &_sample,
+                                              Sampler      *sampler) const {
   Point2 sample(_sample);
 
   /* Randomly pick an emitter */
@@ -819,8 +882,8 @@ Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const 
   Spectrum       value   = emitter->sampleDirect(dRec, sample);
 
   if (dRec.pdf != 0) {
-    value *= evalTransmittance(dRec.ref, false, dRec.p, emitter->isOnSurface(), dRec.time, medium,
-                               interactions, sampler) /
+    value *= evalTransmittance(dRec.ref, false, dRec.p, emitter->isOnSurface(),
+                               dRec.time, medium, interactions, sampler) /
              emPdf;
     dRec.object = emitter;
     dRec.pdf *= emPdf;
@@ -830,9 +893,9 @@ Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const 
   }
 }
 
-Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const Intersection &its,
-                                              const Medium *medium, int &interactions,
-                                              const Point2 &_sample, Sampler *sampler) const {
+Spectrum Scene::sampleAttenuatedEmitterDirect(
+    DirectSamplingRecord &dRec, const Intersection &its, const Medium *medium,
+    int &interactions, const Point2 &_sample, Sampler *sampler) const {
   Point2 sample(_sample);
 
   /* Randomly pick an emitter */
@@ -842,9 +905,10 @@ Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const 
   Spectrum       value   = emitter->sampleDirect(dRec, sample);
 
   if (dRec.pdf != 0) {
-    if (its.shape && its.isMediumTransition()) medium = its.getTargetMedium(dRec.d);
-    value *= evalTransmittance(its.p, true, dRec.p, emitter->isOnSurface(), dRec.time, medium,
-                               interactions, sampler) /
+    if (its.shape && its.isMediumTransition())
+      medium = its.getTargetMedium(dRec.d);
+    value *= evalTransmittance(its.p, true, dRec.p, emitter->isOnSurface(),
+                               dRec.time, medium, interactions, sampler) /
              emPdf;
     dRec.object = emitter;
     dRec.pdf *= emPdf;
@@ -854,13 +918,15 @@ Spectrum Scene::sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const 
   }
 }
 
-Spectrum Scene::sampleSensorDirect(DirectSamplingRecord &dRec, const Point2 &sample,
-                                   bool testVisibility) const {
+Spectrum Scene::sampleSensorDirect(DirectSamplingRecord &dRec,
+                                   const Point2         &sample,
+                                   bool                  testVisibility) const {
   Spectrum value = m_sensor->sampleDirect(dRec, sample);
 
   if (dRec.pdf != 0) {
     if (testVisibility) {
-      Ray ray(dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon), dRec.time);
+      Ray ray(dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon),
+              dRec.time);
       if (m_kdtree->rayIntersect(ray)) return Spectrum(0.0f);
     }
     dRec.object = m_sensor.get();
@@ -870,14 +936,16 @@ Spectrum Scene::sampleSensorDirect(DirectSamplingRecord &dRec, const Point2 &sam
   }
 }
 
-Spectrum Scene::sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec, const Medium *medium,
-                                             int &interactions, const Point2 &sample,
+Spectrum Scene::sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec,
+                                             const Medium         *medium,
+                                             int                  &interactions,
+                                             const Point2         &sample,
                                              Sampler *sampler) const {
   Spectrum value = m_sensor->sampleDirect(dRec, sample);
 
   if (dRec.pdf != 0) {
-    value *= evalTransmittance(dRec.ref, false, dRec.p, m_sensor->isOnSurface(), dRec.time, medium,
-                               interactions, sampler);
+    value *= evalTransmittance(dRec.ref, false, dRec.p, m_sensor->isOnSurface(),
+                               dRec.time, medium, interactions, sampler);
     dRec.object = m_sensor.get();
     return value;
   } else {
@@ -885,15 +953,16 @@ Spectrum Scene::sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec, const M
   }
 }
 
-Spectrum Scene::sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec, const Intersection &its,
-                                             const Medium *medium, int &interactions,
-                                             const Point2 &sample, Sampler *sampler) const {
+Spectrum Scene::sampleAttenuatedSensorDirect(
+    DirectSamplingRecord &dRec, const Intersection &its, const Medium *medium,
+    int &interactions, const Point2 &sample, Sampler *sampler) const {
   Spectrum value = m_sensor->sampleDirect(dRec, sample);
 
   if (dRec.pdf != 0) {
-    if (its.shape && its.isMediumTransition()) medium = its.getTargetMedium(dRec.d);
-    value *= evalTransmittance(its.p, true, dRec.p, m_sensor->isOnSurface(), dRec.time, medium,
-                               interactions, sampler);
+    if (its.shape && its.isMediumTransition())
+      medium = its.getTargetMedium(dRec.d);
+    value *= evalTransmittance(its.p, true, dRec.p, m_sensor->isOnSurface(),
+                               dRec.time, medium, interactions, sampler);
     dRec.object = m_sensor.get();
     return value;
   } else {
@@ -910,7 +979,8 @@ Float Scene::pdfSensorDirect(const DirectSamplingRecord &dRec) const {
   return m_sensor->pdfDirect(dRec);
 }
 
-Spectrum Scene::sampleEmitterPosition(PositionSamplingRecord &pRec, const Point2 &_sample) const {
+Spectrum Scene::sampleEmitterPosition(PositionSamplingRecord &pRec,
+                                      const Point2           &_sample) const {
   Point2 sample(_sample);
 
   /* Randomly pick an emitter */
@@ -931,8 +1001,10 @@ Float Scene::pdfEmitterPosition(const PositionSamplingRecord &pRec) const {
   return emitter->pdfPosition(pRec) * pdfEmitterDiscrete(emitter);
 }
 
-Spectrum Scene::sampleEmitterRay(Ray &ray, const Emitter *&emitter, const Point2 &spatialSample,
-                                 const Point2 &directionalSample, Float time) const {
+Spectrum Scene::sampleEmitterRay(Ray &ray, const Emitter *&emitter,
+                                 const Point2 &spatialSample,
+                                 const Point2 &directionalSample,
+                                 Float         time) const {
 
   Point2 sample(spatialSample);
 
@@ -942,6 +1014,33 @@ Spectrum Scene::sampleEmitterRay(Ray &ray, const Emitter *&emitter, const Point2
   emitter      = m_emitters[index].get();
 
   return emitter->sampleRay(ray, sample, directionalSample, time) / emPdf;
+}
+
+std::pair<Spectrum, bool>
+Scene::sampleEmitterDirectVisible(DirectSamplingRecord &dRec,
+                                  const Point2         &_sample) const {
+  Point2 sample(_sample);
+
+  /* Randomly pick an emitter */
+  Float          emPdf;
+  size_t         index   = m_emitterPDF.sampleReuse(sample.x, emPdf);
+  const Emitter *emitter = m_emitters[index].get();
+  Spectrum       value   = emitter->sampleDirect(dRec, sample);
+
+  dRec.object = emitter;
+  dRec.pdf *= emPdf;
+  value /= emPdf;
+
+  {
+    Ray ray(dRec.ref, dRec.d, Epsilon, dRec.dist * (1 - ShadowEpsilon),
+            dRec.time);
+
+    if (m_kdtree->rayIntersect(ray)) {
+      return std::make_pair(Spectrum(0.0f), false);
+    }
+  }
+
+  return std::make_pair(value, true);
 }
 
 MTS_IMPLEMENT_CLASS_S(Scene, false, ConfigurableObject)

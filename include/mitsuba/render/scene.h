@@ -107,8 +107,8 @@ public:
    *
    * \return \c true upon successful completion.
    */
-  bool preprocess(RenderQueue *queue, const RenderJob *job, int sceneResID, int sensorResID,
-                  int samplerResID);
+  bool preprocess(RenderQueue *queue, const RenderJob *job, int sceneResID,
+                  int sensorResID, int samplerResID);
 
   /**
    * \brief Render the scene as seen by the scene's main sensor.
@@ -123,8 +123,8 @@ public:
    *
    * \return \c true upon successful completion.
    */
-  bool render(RenderQueue *queue, const RenderJob *job, int sceneResID, int sensorResID,
-              int samplerResID);
+  bool render(RenderQueue *queue, const RenderJob *job, int sceneResID,
+              int sensorResID, int samplerResID);
 
   /**
    * \brief Perform any post-processing steps after rendering
@@ -137,8 +137,8 @@ public:
    * sensor and sample generator, which have been made available to all
    * local and remote workers.
    */
-  void postprocess(RenderQueue *queue, const RenderJob *job, int sceneResID, int sensorResID,
-                   int samplerResID);
+  void postprocess(RenderQueue *queue, const RenderJob *job, int sceneResID,
+                   int sensorResID, int samplerResID);
 
   /// Write out the current (partially rendered) image
   void flush(RenderQueue *queue, const RenderJob *job);
@@ -217,8 +217,8 @@ public:
    *
    * \return \c true if an intersection was found
    */
-  inline bool rayIntersect(const Ray &ray, Float &t, ConstShapePtr &shape, Normal &n,
-                           Point2 &uv) const {
+  inline bool rayIntersect(const Ray &ray, Float &t, ConstShapePtr &shape,
+                           Normal &n, Point2 &uv) const {
     return m_kdtree->rayIntersect(ray, t, shape, n, uv);
   }
 
@@ -238,7 +238,9 @@ public:
    *
    * \return \c true if an intersection was found
    */
-  inline bool rayIntersect(const Ray &ray) const { return m_kdtree->rayIntersect(ray); }
+  inline bool rayIntersect(const Ray &ray) const {
+    return m_kdtree->rayIntersect(ray);
+  }
 
   /**
    * \brief Return the transmittance between \c p1 and \c p2 at the
@@ -285,9 +287,9 @@ public:
    * \return An spectral-valued transmittance value with components
    *     between zero and one.
    */
-  Spectrum evalTransmittance(const Point &p1, bool p1OnSurface, const Point &p2, bool p2OnSurface,
-                             Float time, const Medium *medium, int &interactions,
-                             Sampler *sampler = NULL) const;
+  Spectrum evalTransmittance(const Point &p1, bool p1OnSurface, const Point &p2,
+                             bool p2OnSurface, Float time, const Medium *medium,
+                             int &interactions, Sampler *sampler = NULL) const;
 
   //! @}
   // =============================================================
@@ -358,7 +360,8 @@ public:
    *
    * \return \c true if an intersection was found
    */
-  bool rayIntersectAll(const Ray &ray, Float &t, ConstShapePtr &shape, Normal &n, Point2 &uv) const;
+  bool rayIntersectAll(const Ray &ray, Float &t, ConstShapePtr &shape,
+                       Normal &n, Point2 &uv) const;
 
   /**
    * \brief Intersect a ray against all normal and "special" primitives
@@ -439,9 +442,10 @@ public:
    * \return An spectral-valued transmittance value with components
    *     between zero and one.
    */
-  Spectrum evalTransmittanceAll(const Point &p1, bool p1OnSurface, const Point &p2,
-                                bool p2OnSurface, Float time, const Medium *medium,
-                                int &interactions, Sampler *sampler = NULL) const;
+  Spectrum evalTransmittanceAll(const Point &p1, bool p1OnSurface,
+                                const Point &p2, bool p2OnSurface, Float time,
+                                const Medium *medium, int &interactions,
+                                Sampler *sampler = NULL) const;
 
   //! @}
   // =============================================================
@@ -552,8 +556,10 @@ public:
    *    An importance weight given by the radiance received along
    *    the sampled ray divided by the sample probability.
    */
-  Spectrum sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const Medium *medium,
-                                         int &interactions, const Point2 &sample,
+  Spectrum sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec,
+                                         const Medium         *medium,
+                                         int                  &interactions,
+                                         const Point2         &sample,
                                          Sampler *sampler = NULL) const;
 
   /**
@@ -600,9 +606,10 @@ public:
    *    An importance weight given by the radiance received along
    *    the sampled ray divided by the sample probability.
    */
-  Spectrum sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec, const Medium *medium,
-                                        int &interactions, const Point2 &sample,
-                                        Sampler *sampler = NULL) const;
+  Spectrum sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec,
+                                        const Medium *medium, int &interactions,
+                                        const Point2 &sample,
+                                        Sampler      *sampler = NULL) const;
 
   /**
    * \brief Direct illumination sampling with support for participating
@@ -654,9 +661,9 @@ public:
    *    An importance weight given by the radiance received along
    *    the sampled ray divided by the sample probability.
    */
-  Spectrum sampleAttenuatedEmitterDirect(DirectSamplingRecord &dRec, const Intersection &its,
-                                         const Medium *medium, int &interactions,
-                                         const Point2 &sample, Sampler *sampler = NULL) const;
+  Spectrum sampleAttenuatedEmitterDirect(
+      DirectSamplingRecord &dRec, const Intersection &its, const Medium *medium,
+      int &interactions, const Point2 &sample, Sampler *sampler = NULL) const;
 
   /**
    * \brief "Direct illumination" sampling routine for the main scene sensor
@@ -708,9 +715,11 @@ public:
    *    An importance weight given by the radiance received along
    *    the sampled ray divided by the sample probability.
    */
-  Spectrum sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec, const Intersection &its,
+  Spectrum sampleAttenuatedSensorDirect(DirectSamplingRecord &dRec,
+                                        const Intersection   &its,
                                         const Medium *medium, int &interactions,
-                                        const Point2 &sample, Sampler *sampler = NULL) const;
+                                        const Point2 &sample,
+                                        Sampler      *sampler = NULL) const;
 
   /**
    * \brief Evaluate the probability density of the \a direct sampling
@@ -778,7 +787,8 @@ public:
    *    This accounts for the difference in the spatial part of the
    *    emission profile and the density function.
    */
-  Spectrum sampleEmitterPosition(PositionSamplingRecord &pRec, const Point2 &sample) const;
+  Spectrum sampleEmitterPosition(PositionSamplingRecord &pRec,
+                                 const Point2           &sample) const;
 
   /**
    * \brief Sample a position on the main sensor of the scene.
@@ -805,7 +815,8 @@ public:
    *    This accounts for the difference in the spatial part of the
    *    response profile and the density function.
    */
-  inline Spectrum sampleSensorPosition(PositionSamplingRecord &pRec, const Point2 &sample,
+  inline Spectrum sampleSensorPosition(PositionSamplingRecord &pRec,
+                                       const Point2           &sample,
                                        const Point2 *extra = NULL) const {
     pRec.object = m_sensor.get();
     return m_sensor->samplePosition(pRec, sample, extra);
@@ -878,7 +889,8 @@ public:
    *    This accounts for the difference between the emission profile
    *    and the sampling density function.
    */
-  Spectrum sampleEmitterRay(Ray &ray, const Emitter *&emitter, const Point2 &spatialSample,
+  Spectrum sampleEmitterRay(Ray &ray, const Emitter *&emitter,
+                            const Point2 &spatialSample,
                             const Point2 &directionalSample, Float time) const;
 
   //! @}
@@ -889,10 +901,14 @@ public:
   // =============================================================
 
   /// Return the scene's environment emitter (if there is one)
-  inline const Emitter *getEnvironmentEmitter() const { return m_environmentEmitter.get(); }
+  inline const Emitter *getEnvironmentEmitter() const {
+    return m_environmentEmitter.get();
+  }
 
   /// Does the scene have a environment emitter?
-  inline bool hasEnvironmentEmitter() const { return m_environmentEmitter.get() != NULL; }
+  inline bool hasEnvironmentEmitter() const {
+    return m_environmentEmitter.get() != NULL;
+  }
 
   /**
    * \brief Return the environment radiance for a ray that did not intersect
@@ -901,7 +917,8 @@ public:
    * This is primarily meant for path tracing-style integrators.
    */
   inline Spectrum evalEnvironment(const RayDifferential &ray) const {
-    return hasEnvironmentEmitter() ? m_environmentEmitter->evalEnvironment(ray) : Spectrum(0.0f);
+    return hasEnvironmentEmitter() ? m_environmentEmitter->evalEnvironment(ray)
+                                   : Spectrum(0.0f);
   }
 
   /**
@@ -911,7 +928,8 @@ public:
    *
    * This is primarily meant for path tracing-style integrators.
    */
-  inline Spectrum evalAttenuatedEnvironment(const RayDifferential &ray, const Medium *medium,
+  inline Spectrum evalAttenuatedEnvironment(const RayDifferential &ray,
+                                            const Medium          *medium,
                                             Sampler *sampler) const {
     if (!m_environmentEmitter) return Spectrum(0.0f);
     Spectrum result = evalEnvironment(ray);
@@ -1016,7 +1034,9 @@ public:
    * the integrator needs to be submitted separately and re-attached
    * on the remote side using \ref setIntegrator().
    **/
-  inline void setIntegrator(Integrator *integrator) { m_integrator = integrator; }
+  inline void setIntegrator(Integrator *integrator) {
+    m_integrator = integrator;
+  }
 
   /// Return the scene's integrator
   inline Integrator *getIntegrator() { return m_integrator; }
@@ -1060,9 +1080,13 @@ public:
   inline const ShapeKDTree *getKDTree() const { return m_kdtree.get(); }
 
   /// Return the a list of all subsurface integrators
-  inline ref_vector<Subsurface> &getSubsurfaceIntegrators() { return m_ssIntegrators; }
+  inline ref_vector<Subsurface> &getSubsurfaceIntegrators() {
+    return m_ssIntegrators;
+  }
   /// Return the a list of all subsurface integrators
-  inline const ref_vector<Subsurface> &getSubsurfaceIntegrators() const { return m_ssIntegrators; }
+  inline const ref_vector<Subsurface> &getSubsurfaceIntegrators() const {
+    return m_ssIntegrators;
+  }
 
   /// Return the scene's triangular meshes (a subset of \ref getShapes())
   inline std::vector<TriMesh *> &getMeshes() { return m_meshes; }
@@ -1073,10 +1097,14 @@ public:
   /// Return the scene's normal shapes (including triangular meshes)
   inline const ref_vector<Shape> &getShapes() const { return m_shapes; }
 
-  /// Return a set of special shapes related to emitter/sensor geometry in bidirectional renderings
+  /// Return a set of special shapes related to emitter/sensor geometry in
+  /// bidirectional renderings
   inline ref_vector<Shape> &getSpecialShapes() { return m_specialShapes; }
-  /// Return a set of special shapes related to emitter/sensor geometry in bidirectional renderings
-  inline const ref_vector<Shape> &getSpecialShapes() const { return m_specialShapes; }
+  /// Return a set of special shapes related to emitter/sensor geometry in
+  /// bidirectional renderings
+  inline const ref_vector<Shape> &getSpecialShapes() const {
+    return m_specialShapes;
+  }
 
   /// Return the scene's emitters
   inline ref_vector<Emitter> &getEmitters() { return m_emitters; }
@@ -1087,16 +1115,23 @@ public:
   /// Return the scene's participating media
   inline const ref_vector<Medium> &getMedia() const { return m_media; }
   /// Return referenced objects (such as textures, BSDFs)
-  inline ref_vector<ConfigurableObject> &getReferencedObjects() { return m_objects; }
+  inline ref_vector<ConfigurableObject> &getReferencedObjects() {
+    return m_objects;
+  }
   /// Return referenced objects (such as textures, BSDFs)
-  inline const ref_vector<ConfigurableObject> &getReferencedObjects() const { return m_objects; }
+  inline const ref_vector<ConfigurableObject> &getReferencedObjects() const {
+    return m_objects;
+  }
 
-  /// Return the name of the file containing the original description of this scene
+  /// Return the name of the file containing the original description of this
+  /// scene
   inline const fs::path &getSourceFile() const { return *m_sourceFile; }
   /// Set the name of the file containing the original description of this scene
   void setSourceFile(const fs::path &name);
   /// Return the render output filename
-  inline const fs::path &getDestinationFile() const { return *m_destinationFile; }
+  inline const fs::path &getDestinationFile() const {
+    return *m_destinationFile;
+  }
   /// Set the render output filename
   void setDestinationFile(const fs::path &name);
 
@@ -1115,7 +1150,8 @@ public:
 
   /* NetworkedObject implementation */
   void bindUsedResources(ParallelProcess *proc) const;
-  void wakeup(ConfigurableObject *parent, std::map<std::string, SerializableObject *> &params);
+  void wakeup(ConfigurableObject                          *parent,
+              std::map<std::string, SerializableObject *> &params);
 
   /// Return a string representation
   std::string toString() const;
@@ -1123,9 +1159,10 @@ public:
   //! @}
   // =============================================================
 
-  // TODO implement
-  Spectrum SampleVolumetricDirect(DirectSamplingRecord *dRec, const Medium *medium, Point2 uLight,
-                                  const RNG_CX &rng) const;
+  // Copy from gradient-pt https://github.com/mmanzi/gradientdomain-mitsuba
+  std::pair<Spectrum, bool>
+  sampleEmitterDirectVisible(DirectSamplingRecord &dRec,
+                             const Point2         &_sample) const;
 
   MTS_DECLARE_CLASS()
 protected:

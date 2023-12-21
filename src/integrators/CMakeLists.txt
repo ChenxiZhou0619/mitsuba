@@ -41,9 +41,13 @@ add_mts_plugin(rcpt radiancecache/radiancecache.cpp)
 # Gradient Path-Tracing
 add_mts_plugin(gpt 
     # tracer
-    gradient/gpt.cpp
-    gradient/gpt_wr.cpp
-    gradient/gpt_proc.cpp
+    gradient/gpt/gpt.cpp
+    gradient/gpt/gpt_wr.cpp
+    gradient/gpt/gpt_proc.cpp
+    
+    # impl
+    gradient/gpt/impl/pt.cpp
+    gradient/gpt/impl/shiftmap.cpp
 
     # reconstruction
     gradient/poisson_solver/Backend.cpp

@@ -141,8 +141,6 @@ void GradientPathIntegrator::renderBlock(
     GPTWorkResult *block, const bool &stop,
     const std::vector<TPoint2<uint8_t>> &points) const {
 
-  // TODO Choose different tracer here
-
   std::shared_ptr<IGradientPathTracer> tracer = nullptr;
 
   switch (m_config.m_shiftType) {
@@ -153,6 +151,7 @@ void GradientPathIntegrator::renderBlock(
   case 1 /** Primary space shift */:
     tracer = std::make_shared<PSGradientPathTracer>(scene, sensor, sampler,
                                                     block, &m_config);
+    // TODO
     std::cout << "Primary space has not implemented!\n";
     exit(1);
     break;

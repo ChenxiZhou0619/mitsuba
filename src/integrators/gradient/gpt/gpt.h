@@ -40,6 +40,8 @@ struct GradientPathTracerConfig {
   bool  m_reconstructL2;
   Float m_reconstructAlpha;
 
+  int m_shiftType;
+
   inline GradientPathTracerConfig() {}
 
   inline GradientPathTracerConfig(Stream *stream) {

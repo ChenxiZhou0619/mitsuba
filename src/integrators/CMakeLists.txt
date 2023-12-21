@@ -47,6 +47,7 @@ add_mts_plugin(gpt
     
     # impl
     gradient/gpt/impl/pt.cpp
+    gradient/gpt/impl/pspt.cpp
     gradient/gpt/impl/shiftmap.cpp
 
     # reconstruction

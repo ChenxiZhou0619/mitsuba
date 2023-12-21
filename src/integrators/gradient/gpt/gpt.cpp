@@ -31,6 +31,7 @@
 #include "gradient_pt.h"
 
 #include "impl/pt.h"
+#include "impl/pspt.h"
 // clang-format on
 
 MTS_NAMESPACE_BEGIN
@@ -115,6 +116,8 @@ GradientPathIntegrator::GradientPathIntegrator(const Properties &props)
   m_config.m_reconstructAlpha =
       (Float)props.getFloat("reconstructAlpha", Float(0.2));
 
+  m_config.m_shiftType = props.getInteger("shiftType", 0);
+
   if (m_config.m_reconstructL1 && m_config.m_reconstructL2)
     Log(EError, "Disable 'reconstructL1' or 'reconstructL2': Cannot display "
                 "two reconstructions at a time!");
@@ -139,7 +142,25 @@ void GradientPathIntegrator::renderBlock(
     const std::vector<TPoint2<uint8_t>> &points) const {
 
   // TODO Choose different tracer here
-  GradientPathTracer tracer(scene, sensor, sampler, block, &m_config);
+
+  std::shared_ptr<IGradientPathTracer> tracer = nullptr;
+
+  switch (m_config.m_shiftType) {
+  case 0 /** Default half-vector + reconnect */:
+    tracer = std::make_shared<GradientPathTracer>(scene, sensor, sampler, block,
+                                                  &m_config);
+    break;
+  case 1 /** Primary space shift */:
+    tracer = std::make_shared<PSGradientPathTracer>(scene, sensor, sampler,
+                                                    block, &m_config);
+    std::cout << "Primary space has not implemented!\n";
+    exit(1);
+    break;
+
+  default:
+    std::cout << "Fatal : Unknown shift type, terminate\n";
+    exit(1);
+  }
 
   bool needsApertureSample = sensor->needsApertureSample();
   bool needsTimeSample     = sensor->needsTimeSample();
@@ -189,9 +210,9 @@ void GradientPathIntegrator::renderBlock(
       Spectrum centralVeryDirect = Spectrum(0.0f);
       Spectrum centralThroughput = Spectrum(0.0f);
 
-      tracer.evaluatePoint(rRec, samplePos, apertureSample, timeSample,
-                           diffScaleFactor, centralVeryDirect,
-                           centralThroughput, gradients, shiftedThroughputs);
+      tracer->evaluatePoint(rRec, samplePos, apertureSample, timeSample,
+                            diffScaleFactor, centralVeryDirect,
+                            centralThroughput, gradients, shiftedThroughputs);
 
       // Accumulate results.
       const Point2 right_pixel  = samplePos + Vector2(1.0f, 0.0f);

@@ -17,5 +17,5 @@ add_mts_executable(mtsutil mtsutil.cpp)
 add_mts_executable(mtssrv mtssrv.cpp)
 add_mts_executable(mitsuba mitsuba.cpp)
 
-add_mts_executable(test test.cpp)
-target_link_libraries(test python3.10)
+# add_mts_executable(test test.cpp)
+# target_link_libraries(test python3.10)

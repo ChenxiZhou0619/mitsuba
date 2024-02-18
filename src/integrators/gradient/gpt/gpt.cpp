@@ -104,15 +104,20 @@ static const size_t BUFFER_DY = 3; ///< Buffer index for the Y gradients.
 static const size_t BUFFER_VERY_DIRECT =
     4; ///< Buffer index for very direct light.
 
+static const size_t BUFFER_SHIFTED_0 = 5;
+static const size_t BUFFER_SHIFTED_1 = 6;
+static const size_t BUFFER_SHIFTED_2 = 7;
+static const size_t BUFFER_SHIFTED_3 = 8;
+
 GradientPathIntegrator::GradientPathIntegrator(const Properties &props)
     : MonteCarloIntegrator(props) {
-  m_config.m_maxDepth       = props.getInteger("maxDepth", -1);
-  m_config.m_minDepth       = props.getInteger("minDepth", -1);
-  m_config.m_rrDepth        = props.getInteger("rrDepth", 5);
-  m_config.m_strictNormals  = props.getBoolean("strictNormals", false);
+  m_config.m_maxDepth = props.getInteger("maxDepth", -1);
+  m_config.m_minDepth = props.getInteger("minDepth", -1);
+  m_config.m_rrDepth = props.getInteger("rrDepth", 5);
+  m_config.m_strictNormals = props.getBoolean("strictNormals", false);
   m_config.m_shiftThreshold = props.getFloat("shiftThreshold", Float(0.001));
-  m_config.m_reconstructL1  = props.getBoolean("reconstructL1", true);
-  m_config.m_reconstructL2  = props.getBoolean("reconstructL2", false);
+  m_config.m_reconstructL1 = props.getBoolean("reconstructL1", true);
+  m_config.m_reconstructL2 = props.getBoolean("reconstructL2", false);
   m_config.m_reconstructAlpha =
       (Float)props.getFloat("reconstructAlpha", Float(0.2));
 
@@ -130,7 +135,7 @@ GradientPathIntegrator::GradientPathIntegrator(const Properties &props)
                 "than zero!");
 }
 
-GradientPathIntegrator::GradientPathIntegrator(Stream          *stream,
+GradientPathIntegrator::GradientPathIntegrator(Stream *stream,
                                                InstanceManager *manager)
     : MonteCarloIntegrator(stream, manager) {
   m_config = GradientPathTracerConfig(stream);
@@ -162,7 +167,7 @@ void GradientPathIntegrator::renderBlock(
   }
 
   bool needsApertureSample = sensor->needsApertureSample();
-  bool needsTimeSample     = sensor->needsTimeSample();
+  bool needsTimeSample = sensor->needsTimeSample();
 
   // Original code from SamplingIntegrator.
   Float diffScaleFactor = 1.0f / std::sqrt((Float)sampler->getSampleCount());
@@ -170,8 +175,8 @@ void GradientPathIntegrator::renderBlock(
   // Get ready for sampling.
   RadianceQueryRecord rRec(scene, sampler);
 
-  Point2          apertureSample(0.5f);
-  Float           timeSample = 0.5f;
+  Point2 apertureSample(0.5f);
+  Float timeSample = 0.5f;
   RayDifferential sensorRay;
 
   block->clear();
@@ -214,16 +219,16 @@ void GradientPathIntegrator::renderBlock(
                             centralThroughput, gradients, shiftedThroughputs);
 
       // Accumulate results.
-      const Point2 right_pixel  = samplePos + Vector2(1.0f, 0.0f);
+      const Point2 right_pixel = samplePos + Vector2(1.0f, 0.0f);
       const Point2 bottom_pixel = samplePos + Vector2(0.0f, 1.0f);
-      const Point2 left_pixel   = samplePos - Vector2(1.0f, 0.0f);
-      const Point2 top_pixel    = samplePos - Vector2(0.0f, 1.0f);
+      const Point2 left_pixel = samplePos - Vector2(1.0f, 0.0f);
+      const Point2 top_pixel = samplePos - Vector2(0.0f, 1.0f);
       const Point2 center_pixel = samplePos;
 
-      static const int RIGHT  = 0;
+      static const int RIGHT = 0;
       static const int BOTTOM = 1;
-      static const int LEFT   = 2;
-      static const int TOP    = 3;
+      static const int LEFT = 2;
+      static const int TOP = 3;
 
       // Note: Sampling differences and throughputs to multiple directions is
       // essentially
@@ -315,6 +320,18 @@ void GradientPathIntegrator::renderBlock(
       // Very direct.
       block->put(center_pixel, centralVeryDirect, 1.0f, 1.0f,
                  BUFFER_VERY_DIRECT);
+
+      // shifted
+      {
+        block->put(left_pixel, shiftedThroughputs[LEFT], 1.0f, 1.0f,
+                   BUFFER_SHIFTED_2);
+        block->put(right_pixel, shiftedThroughputs[RIGHT], 1.0f, 1.0f,
+                   BUFFER_SHIFTED_0);
+        block->put(top_pixel, shiftedThroughputs[TOP], 1.0f, 1.0f,
+                   BUFFER_SHIFTED_3);
+        block->put(bottom_pixel, shiftedThroughputs[BOTTOM], 1.0f, 1.0f,
+                   BUFFER_SHIFTED_1);
+      }
     }
   }
 }
@@ -331,26 +348,27 @@ bool GradientPathIntegrator::render(Scene *scene, RenderQueue *queue,
   }
 
   /* Get config from the parent class. */
-  m_config.m_maxDepth      = m_maxDepth;
-  m_config.m_minDepth      = 1; // m_minDepth;
-  m_config.m_rrDepth       = m_rrDepth;
+  m_config.m_maxDepth = m_maxDepth;
+  m_config.m_minDepth = 1; // m_minDepth;
+  m_config.m_rrDepth = m_rrDepth;
   m_config.m_strictNormals = m_strictNormals;
 
   /* Code duplicated from SamplingIntegrator::Render. */
   ref<Scheduler> sched = Scheduler::getInstance();
-  ref<Sensor> sensor   = static_cast<Sensor *>(sched->getResource(sensorResID));
+  ref<Sensor> sensor = static_cast<Sensor *>(sched->getResource(sensorResID));
 
   /* Set up MultiFilm. */
   ref<Film> film = sensor->getFilm();
 
-  std::vector<std::string> outNames = {"-final", "-throughput", "-dx", "-dy",
-                                       "-direct"};
+  std::vector<std::string> outNames = {"-final",  "-throughput", "-dx",
+                                       "-dy",     "-direct",     "-shift0",
+                                       "-shift1", "-shift2",     "-shift3"};
   if (!film->setBuffers(outNames)) {
     Log(EError, "Cannot render image! G-PT has been called without MultiFilm.");
     return false;
   }
 
-  size_t         nCores = sched->getCoreCount();
+  size_t nCores = sched->getCoreCount();
   const Sampler *sampler =
       static_cast<const Sampler *>(sched->getResource(samplerResID, 0));
   size_t sampleCount = sampler->getSampleCount();
@@ -480,16 +498,16 @@ static Float miWeight(Float pdfA, Float pdfB) {
 }
 
 Spectrum GradientPathIntegrator::Li(const RayDifferential &r,
-                                    RadianceQueryRecord   &rRec) const {
+                                    RadianceQueryRecord &rRec) const {
   // Duplicate of MIPathTracer::Li to support sub-surface scattering
   // initialization.
 
   /* Some aliases and local variables */
-  const Scene    *scene = rRec.scene;
-  Intersection   &its   = rRec.its;
+  const Scene *scene = rRec.scene;
+  Intersection &its = rRec.its;
   RayDifferential ray(r);
-  Spectrum        Li(0.0f);
-  bool            scattered = false;
+  Spectrum Li(0.0f);
+  bool scattered = false;
 
   /* Perform the first ray intersection (or ignore if the
           intersection has already been provided). */
@@ -497,7 +515,7 @@ Spectrum GradientPathIntegrator::Li(const RayDifferential &r,
   ray.mint = Epsilon;
 
   Spectrum throughput(1.0f);
-  Float    eta = 1.0f;
+  Float eta = 1.0f;
 
   while (rRec.depth <= m_maxDepth || m_maxDepth < 0) {
     if (!its.isValid()) {
@@ -576,19 +594,21 @@ Spectrum GradientPathIntegrator::Li(const RayDifferential &r,
     /* ==================================================================== */
 
     /* Sample BSDF * cos(theta) */
-    Float              bsdfPdf;
+    Float bsdfPdf;
     BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
     Spectrum bsdfWeight = bsdf->sample(bRec, bsdfPdf, rRec.nextSample2D());
-    if (bsdfWeight.isZero()) break;
+    if (bsdfWeight.isZero())
+      break;
 
     scattered |= bRec.sampledType != BSDF::ENull;
 
     /* Prevent light leaks due to the use of shading normals */
-    const Vector wo        = its.toWorld(bRec.wo);
-    Float        woDotGeoN = dot(its.geoFrame.n, wo);
-    if (m_strictNormals && woDotGeoN * Frame::cosTheta(bRec.wo) <= 0) break;
+    const Vector wo = its.toWorld(bRec.wo);
+    Float woDotGeoN = dot(its.geoFrame.n, wo);
+    if (m_strictNormals && woDotGeoN * Frame::cosTheta(bRec.wo) <= 0)
+      break;
 
-    bool     hitEmitter = false;
+    bool hitEmitter = false;
     Spectrum value;
 
     /* Trace a ray in this direction */
@@ -605,10 +625,12 @@ Spectrum GradientPathIntegrator::Li(const RayDifferential &r,
       const Emitter *env = scene->getEnvironmentEmitter();
 
       if (env) {
-        if (m_hideEmitters && !scattered) break;
+        if (m_hideEmitters && !scattered)
+          break;
 
         value = env->evalEnvironment(ray);
-        if (!env->fillDirectSamplingRecord(dRec, ray)) break;
+        if (!env->fillDirectSamplingRecord(dRec, ray))
+          break;
         hitEmitter = true;
       } else {
         break;
@@ -650,7 +672,8 @@ Spectrum GradientPathIntegrator::Li(const RayDifferential &r,
               getting stuck (e.g. due to total internal reflection) */
 
       Float q = std::min(throughput.max() * eta * eta, (Float)0.95f);
-      if (rRec.nextSample1D() >= q) break;
+      if (rRec.nextSample1D() >= q)
+        break;
       throughput /= q;
     }
   }
@@ -658,7 +681,7 @@ Spectrum GradientPathIntegrator::Li(const RayDifferential &r,
   return Li;
 }
 
-void GradientPathIntegrator::serialize(Stream          *stream,
+void GradientPathIntegrator::serialize(Stream *stream,
                                        InstanceManager *manager) const {
   MonteCarloIntegrator::serialize(stream, manager);
   m_config.serialize(stream);

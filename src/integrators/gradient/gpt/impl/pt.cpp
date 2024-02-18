@@ -8,17 +8,17 @@ void GradientPathTracer::evaluatePoint(
     Float differentialScaleFactor, Spectrum &out_very_direct,
     Spectrum &out_throughput, Spectrum *out_gradients,
     Spectrum *out_neighborThroughputs) {
+
   // Initialize the base path.
   RayState mainRay;
   mainRay.throughput = m_sensor->sampleRayDifferential(
       mainRay.ray, samplePosition, apertureSample, timeSample);
   mainRay.ray.scaleDifferential(differentialScaleFactor);
-  mainRay.rRec     = rRec;
+  mainRay.rRec = rRec;
   mainRay.rRec.its = rRec.its;
 
   // Initialize the offset paths.
   RayState shiftedRays[4];
-
   static const Vector2 pixelShifts[4] = {
       Vector2(1.0f, 0.0f), Vector2(0.0f, 1.0f), Vector2(-1.0f, 0.0f),
       Vector2(0.0f, -1.0f)};
@@ -28,7 +28,7 @@ void GradientPathTracer::evaluatePoint(
         shiftedRays[i].ray, samplePosition + pixelShifts[i], apertureSample,
         timeSample);
     shiftedRays[i].ray.scaleDifferential(differentialScaleFactor);
-    shiftedRays[i].rRec     = rRec;
+    shiftedRays[i].rRec = rRec;
     shiftedRays[i].rRec.its = rRec.its;
   }
 
@@ -38,16 +38,16 @@ void GradientPathTracer::evaluatePoint(
 
   // Output results.
   out_very_direct = very_direct;
-  out_throughput  = mainRay.radiance;
+  out_throughput = mainRay.radiance;
 
   for (int i = 0; i < 4; i++) {
-    out_gradients[i]           = shiftedRays[i].gradient;
+    out_gradients[i] = shiftedRays[i].gradient;
     out_neighborThroughputs[i] = shiftedRays[i].radiance;
   }
 }
 
 void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
-                                  int       secondaryCount,
+                                  int secondaryCount,
                                   Spectrum &out_veryDirect) {
   const Scene *scene = main.rRec.scene;
 
@@ -181,7 +181,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
         std::pair<Spectrum, bool> emitterTuple =
             m_scene->sampleEmitterDirectVisible(dRec, lightSample);
         Spectrum mainEmitterRadiance = emitterTuple.first * dRec.pdf;
-        bool     mainEmitterVisible  = emitterTuple.second;
+        bool mainEmitterVisible = emitterTuple.second;
 
         const Emitter *emitter = static_cast<const Emitter *>(dRec.object);
 
@@ -237,7 +237,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
 
             Spectrum mainContribution(Float(0));
             Spectrum shiftedContribution(Float(0));
-            Float    weight = Float(0);
+            Float weight = Float(0);
 
             bool shiftSuccessful = shifted.alive;
 
@@ -246,11 +246,11 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
               // Generate the offset path.
               if (shifted.connection_status == RAY_CONNECTED) {
                 // Follow the base path. All relevant vertices are shared.
-                Float    shiftedBsdfPdf         = mainBsdfPdf;
-                Float    shiftedDRecPdf         = dRec.pdf;
-                Spectrum shiftedBsdfValue       = mainBSDFValue;
+                Float shiftedBsdfPdf = mainBsdfPdf;
+                Float shiftedDRecPdf = dRec.pdf;
+                Spectrum shiftedBsdfValue = mainBSDFValue;
                 Spectrum shiftedEmitterRadiance = mainEmitterRadiance;
-                Float    jacobian               = (Float)1;
+                Float jacobian = (Float)1;
 
                 // Power heuristic between light sample from base, BSDF sample
                 // from base, light sample from offset, BSDF sample from
@@ -288,10 +288,10 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                         ? mainBSDF->pdf(bRec)
                         : 0; // The BSDF sampler can not sample occluded path
                              // segments.
-                Float    shiftedDRecPdf         = dRec.pdf;
-                Spectrum shiftedBsdfValue       = mainBSDF->eval(bRec);
+                Float shiftedDRecPdf = dRec.pdf;
+                Spectrum shiftedBsdfValue = mainBSDF->eval(bRec);
                 Spectrum shiftedEmitterRadiance = mainEmitterRadiance;
-                Float    jacobian               = (Float)1;
+                Float jacobian = (Float)1;
 
                 // Power heuristic between light sample from base, BSDF sample
                 // from base, light sample from offset, BSDF sample from
@@ -333,7 +333,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                     (mainVertexType == VERTEX_TYPE_DIFFUSE &&
                      shiftedVertexType == VERTEX_TYPE_DIFFUSE)) {
                   // Get emitter radiance.
-                  DirectSamplingRecord      shiftedDRec(shifted.rRec.its);
+                  DirectSamplingRecord shiftedDRec(shifted.rRec.its);
                   std::pair<Spectrum, bool> emitterTuple =
                       m_scene->sampleEmitterDirectVisible(shiftedDRec,
                                                           lightSample);
@@ -364,11 +364,11 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                     shiftSuccessful = false;
                   } else {
                     Spectrum shiftedBsdfValue = shiftedBSDF->eval(bRec);
-                    Float    shiftedBsdfPdf =
+                    Float shiftedBsdfPdf =
                         (emitter->isOnSurface() &&
                          dRec.measure == ESolidAngle && shiftedEmitterVisible)
-                               ? shiftedBSDF->pdf(bRec)
-                               : 0;
+                            ? shiftedBSDF->pdf(bRec)
+                            : 0;
                     Float jacobian =
                         std::abs(shiftedOpposingCosine * mainDistanceSquared) /
                         (Epsilon +
@@ -452,11 +452,11 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
     Intersection previousMainIts = main.rRec.its;
 
     // Trace a ray in the sampled direction.
-    bool     mainHitEmitter      = false;
+    bool mainHitEmitter = false;
     Spectrum mainEmitterRadiance = Spectrum((Float)0);
 
     DirectSamplingRecord mainDRec(main.rRec.its);
-    const BSDF          *mainBSDF = main.rRec.its.getBSDF(main.ray);
+    const BSDF *mainBSDF = main.rRec.its.getBSDF(main.ray);
 
     // Update the vertex types.
     VertexType mainVertexType =
@@ -491,7 +491,8 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
       if (env) {
         // Hit the environment map.
         mainEmitterRadiance = env->evalEnvironment(main.ray);
-        if (!env->fillDirectSamplingRecord(mainDRec, main.ray)) break;
+        if (!env->fillDirectSamplingRecord(mainDRec, main.ray))
+          break;
         mainHitEmitter = true;
 
         // Handle environment connection as diffuse (that's ~infinitely far
@@ -506,7 +507,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
     }
 
     // Continue the shift.
-    Float mainBsdfPdf     = mainBsdfResult.pdf;
+    Float mainBsdfPdf = mainBsdfResult.pdf;
     Float mainPreviousPdf = main.pdf;
 
     main.throughput *= mainBsdfResult.weight * mainBsdfResult.pdf;
@@ -544,7 +545,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
       Spectrum shiftedEmitterRadiance(Float(0));
       Spectrum mainContribution(Float(0));
       Spectrum shiftedContribution(Float(0));
-      Float    weight(0);
+      Float weight(0);
 
       bool postponedShiftEnd =
           false; // Kills the shift after evaluating the current radiance.
@@ -560,8 +561,8 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
           // sampled values.
           Spectrum shiftedBsdfValue =
               mainBsdfResult.weight * mainBsdfResult.pdf;
-          Float    shiftedBsdfPdf         = mainBsdfPdf;
-          Float    shiftedLumPdf          = mainLumPdf;
+          Float shiftedBsdfPdf = mainBsdfPdf;
+          Float shiftedLumPdf = mainLumPdf;
           Spectrum shiftedEmitterRadiance = mainEmitterRadiance;
 
           // Update throughput and pdf.
@@ -577,7 +578,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
           weight = mainWeightNumerator / (D_EPSILON + shiftedWeightDenominator +
                                           mainWeightDenominator);
 
-          mainContribution    = main.throughput * mainEmitterRadiance;
+          mainContribution = main.throughput * mainEmitterRadiance;
           shiftedContribution = shifted.throughput *
                                 shiftedEmitterRadiance; // Note: Jacobian baked
                                                         // into .throughput.
@@ -598,9 +599,9 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                                  : ESolidAngle;
 
           Spectrum shiftedBsdfValue = mainBSDF->eval(bRec, measure);
-          Float    shiftedBsdfPdf   = mainBSDF->pdf(bRec, measure);
+          Float shiftedBsdfPdf = mainBSDF->pdf(bRec, measure);
 
-          Float    shiftedLumPdf          = mainLumPdf;
+          Float shiftedLumPdf = mainLumPdf;
           Spectrum shiftedEmitterRadiance = mainEmitterRadiance;
 
           // Update throughput and pdf.
@@ -618,7 +619,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
           weight = mainWeightNumerator / (D_EPSILON + shiftedWeightDenominator +
                                           mainWeightDenominator);
 
-          mainContribution    = main.throughput * mainEmitterRadiance;
+          mainContribution = main.throughput * mainEmitterRadiance;
           shiftedContribution = shifted.throughput *
                                 shiftedEmitterRadiance; // Note: Jacobian baked
                                                         // into .throughput.
@@ -642,7 +643,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
             if (!lastSegment || mainHitEmitter ||
                 main.rRec.its.hasSubsurface()) {
               ReconnectionShiftResult shiftResult;
-              bool                    environmentConnection = false;
+              bool environmentConnection = false;
 
               if (main.rRec.its.isValid()) {
                 // This is an actual reconnection shift.
@@ -684,7 +685,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
 
               // Evaluate the BRDF to the new direction.
               Spectrum shiftedBsdfValue = shiftedBSDF->eval(bRec);
-              Float    shiftedBsdfPdf   = shiftedBSDF->pdf(bRec);
+              Float shiftedBsdfPdf = shiftedBSDF->pdf(bRec);
 
               // Update throughput and pdf.
               shifted.throughput *= shiftedBsdfValue * shiftResult.jacobian;
@@ -698,7 +699,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
 
                 // Evaluate radiance to this direction.
                 Spectrum shiftedEmitterRadiance(Float(0));
-                Float    shiftedLumPdf = Float(0);
+                Float shiftedLumPdf = Float(0);
 
                 if (main.rRec.its.isValid()) {
                   // Hit an object.
@@ -714,8 +715,8 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                         (mainDRec.p - shifted.rRec.its.p).length();
                     shiftedDRec.d =
                         (mainDRec.p - shifted.rRec.its.p) / shiftedDRec.dist;
-                    shiftedDRec.ref    = mainDRec.ref;
-                    shiftedDRec.refN   = shifted.rRec.its.shFrame.n;
+                    shiftedDRec.ref = mainDRec.ref;
+                    shiftedDRec.refN = shifted.rRec.its.shFrame.n;
                     shiftedDRec.object = mainDRec.object;
 
                     shiftedLumPdf = scene->pdfEmitterDirect(shiftedDRec);
@@ -733,7 +734,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                 } else {
                   // Hit the environment.
                   shiftedEmitterRadiance = mainEmitterRadiance;
-                  shiftedLumPdf          = mainLumPdf;
+                  shiftedLumPdf = mainLumPdf;
                 }
 
                 // Power heuristic between light sample from base, BSDF sample
@@ -759,7 +760,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
             // been sampled by light sampling (by our decision).
             Vector3 tangentSpaceIncomingDirection =
                 shifted.rRec.its.toLocal(-shifted.ray.d);
-            Vector3  tangentSpaceOutgoingDirection;
+            Vector3 tangentSpaceOutgoingDirection;
             Spectrum shiftedEmitterRadiance(Float(0));
 
             const BSDF *shiftedBSDF = shifted.rRec.its.getBSDF(shifted.ray);
@@ -789,13 +790,13 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
                 // as we decided not to use it in the half-vector-duplication
                 // case. Could have used it, but so far there has been no
                 // need. It doesn't seem to be very useful.
-                weight              = Float(1) / main.pdf;
-                mainContribution    = main.throughput * mainEmitterRadiance;
+                weight = Float(1) / main.pdf;
+                mainContribution = main.throughput * mainEmitterRadiance;
                 shiftedContribution = Spectrum(Float(0));
 
                 // Disable the failure detection below since the failure was
                 // already handled.
-                shifted.alive     = true;
+                shifted.alive = true;
                 postponedShiftEnd = true;
 
                 // (TODO: Restructure into smaller functions and get rid of
@@ -907,7 +908,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
 
               // The offset path is no longer valid after this path segment.
               shiftedEmitterRadiance = env->evalEnvironment(shifted.ray);
-              postponedShiftEnd      = true;
+              postponedShiftEnd = true;
             } else {
               // Hit something.
 
@@ -966,13 +967,13 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
               // we decided not to use it in the half-vector-duplication case.
               // Could have used it, but so far there has been no need. It
               // doesn't seem to be very useful.
-              weight              = Float(1) / main.pdf;
-              mainContribution    = main.throughput * mainEmitterRadiance;
+              weight = Float(1) / main.pdf;
+              mainContribution = main.throughput * mainEmitterRadiance;
               shiftedContribution = Spectrum(Float(0));
 
               // Disable the failure detection below since the failure was
               // already handled.
-              shifted.alive     = true;
+              shifted.alive = true;
               postponedShiftEnd = true;
 
               // (TODO: Restructure into smaller functions and get rid of the
@@ -988,7 +989,7 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
         // The offset path cannot be generated; Set offset PDF and offset
         // throughput to zero.
         weight = mainWeightNumerator / (D_EPSILON + mainWeightDenominator);
-        mainContribution    = main.throughput * mainEmitterRadiance;
+        mainContribution = main.throughput * mainEmitterRadiance;
         shiftedContribution = Spectrum((Float)0);
       }
 
@@ -1025,7 +1026,8 @@ void GradientPathTracer::evaluate(RayState &main, RayState *shiftedRays,
       Float q =
           std::min((main.throughput / main.pdf).max() * main.eta * main.eta,
                    (Float)0.95f);
-      if (main.rRec.nextSample1D() >= q) break;
+      if (main.rRec.nextSample1D() >= q)
+        break;
 
       main.pdf *= q;
       for (int i = 0; i < secondaryCount; ++i) {

@@ -1,3 +1,4 @@
+#include "iilf.h"
 #include <mitsuba/core/statistics.h>
 #include <mitsuba/render/scene.h>
 
@@ -15,11 +16,12 @@ public:
       : MonteCarloIntegrator(stream, manager) {}
 
   Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
+    //! Unused
     return Spectrum(.5f);
   }
 
   Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Vector *wi,
-              Spectrum *indirect_li) const {
+              Spectrum *indirect_li, std::shared_ptr<IILF> iilf) const {
     /* Some aliases and local variables */
     const Scene *scene = rRec.scene;
     Intersection &its = rRec.its;
@@ -248,6 +250,10 @@ public:
       //* incident light field
       size_t j = 0;
 
+      std::vector<Vector> wis;
+      std::vector<Spectrum> indirects;
+
+      // training stage
       for (j = 0; j < m_training_samples; ++j) {
         rRec.newQuery(queryType, sensor->getMedium());
         Point2 samplePos(Point2(offset) + Vector2(rRec.nextSample2D()));
@@ -263,12 +269,18 @@ public:
         sensorRay.scaleDifferential(diffScaleFactor);
 
         Vector wi;
-        Spectrum indirect_li;
+        Spectrum indirect;
 
-        spec *= Li(sensorRay, rRec, &wi, &indirect_li);
+        spec *= Li(sensorRay, rRec, &wi, &indirect, nullptr);
+
+        wis.emplace_back(wi);
+        indirects.emplace_back(indirect);
 
         sampler->advance();
       }
+
+      std::shared_ptr<IILF> iilf;
+      iilf->fit(wis, indirects);
 
       for (; j < sampler->getSampleCount(); j++) {
         rRec.newQuery(queryType, sensor->getMedium());
@@ -284,10 +296,7 @@ public:
 
         sensorRay.scaleDifferential(diffScaleFactor);
 
-        Vector wi;
-        Spectrum indirect_li;
-
-        spec *= Li(sensorRay, rRec, &wi, &indirect_li);
+        spec *= Li(sensorRay, rRec, nullptr, nullptr, iilf);
         block->put(samplePos, spec, rRec.alpha);
         sampler->advance();
       }

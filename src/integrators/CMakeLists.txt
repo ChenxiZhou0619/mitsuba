@@ -61,3 +61,5 @@ add_mts_plugin(
 
     autoint/autoint_cv.cpp
 )
+
+target_link_libraries(autoint "${TORCH_LIBRARIES}")

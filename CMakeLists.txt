@@ -25,6 +25,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS "-msse2 -fPIC")
 
+set(Torch_DIR ext/libtorch/share/cmake/Torch)
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+
+
 add_compile_definitions(
   GLEW_MX
   MTS_DEBUGs
@@ -40,6 +45,7 @@ include_directories(ext/tbb/include)
 include_directories(ext/matplotlib-cpp)
 include_directories(ext/nanoflann/include)
 include_directories(/usr/include/python3.10)
+
 
 # Load the configure script
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/data/cmake)

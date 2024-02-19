@@ -9,7 +9,7 @@ class IILF {
 public:
   IILF() = default;
 
-  void fit(std::vector<Vector> wis, std::vector<Spectrum> indirects);
+  void fit(std::vector<std::pair<Vector, Spectrum>> datas);
 
 private:
   SIREN siren;

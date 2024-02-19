@@ -1,8 +1,15 @@
 #include "iilf.h"
+#include <mitsuba/core/plugin.h>
 #include <mitsuba/core/statistics.h>
 #include <mitsuba/render/scene.h>
-
 MTS_NAMESPACE_BEGIN
+
+struct TrainingInfo {
+  Point2i pixel_offset;
+
+  Vector wi_local;
+  Spectrum li;
+};
 
 class AutointControlVariate : public MonteCarloIntegrator {
 public:
@@ -20,8 +27,9 @@ public:
     return Spectrum(.5f);
   }
 
-  Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Vector *wi,
-              Spectrum *indirect_li, std::shared_ptr<IILF> iilf) const {
+  Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec,
+              TrainingInfo *info, std::shared_ptr<IILF> iilf) const {
+
     /* Some aliases and local variables */
     const Scene *scene = rRec.scene;
     Intersection &its = rRec.its;
@@ -218,9 +226,16 @@ public:
     return "AutointControlVariate screen-spaced path tracer\n";
   }
 
+  bool preprocess(const Scene *scene, RenderQueue *queue, const RenderJob *job,
+                  int sceneResID, int sensorResID, int samplerResID);
+
+  void train(Scene *scene, RenderQueue *queue, const RenderJob *job,
+             int sensorResID);
+
   void renderBlock(const Scene *scene, const Sensor *sensor, Sampler *sampler,
                    ImageBlock *block, const bool &stop,
                    const std::vector<TPoint2<uint8_t>> &points) const {
+
     Float diffScaleFactor = 1.0f / std::sqrt((Float)sampler->getSampleCount());
 
     bool needsApertureSample = sensor->needsApertureSample();
@@ -241,48 +256,22 @@ public:
 
     for (size_t i = 0; i < points.size(); ++i) {
       Point2i offset = Point2i(points[i]) + Vector2i(block->getOffset());
+      int linear_offset = offset[0] * 288 + offset[1]; // TODO
+
       if (stop)
         break;
 
       sampler->generate(offset);
 
-      //* before real rendering, using m_training_samples to fit the indirect
-      //* incident light field
-      size_t j = 0;
+      std::shared_ptr<IILF> iilf = nullptr;
+      if (!m_is_training /* real rendering */) {
+        // fit the autoint with samples stored in m_datas
 
-      std::vector<Vector> wis;
-      std::vector<Spectrum> indirects;
-
-      // training stage
-      for (j = 0; j < m_training_samples; ++j) {
-        rRec.newQuery(queryType, sensor->getMedium());
-        Point2 samplePos(Point2(offset) + Vector2(rRec.nextSample2D()));
-
-        if (needsApertureSample)
-          apertureSample = rRec.nextSample2D();
-        if (needsTimeSample)
-          timeSample = rRec.nextSample1D();
-
-        Spectrum spec = sensor->sampleRayDifferential(
-            sensorRay, samplePos, apertureSample, timeSample);
-
-        sensorRay.scaleDifferential(diffScaleFactor);
-
-        Vector wi;
-        Spectrum indirect;
-
-        spec *= Li(sensorRay, rRec, &wi, &indirect, nullptr);
-
-        wis.emplace_back(wi);
-        indirects.emplace_back(indirect);
-
-        sampler->advance();
+        iilf = std::make_shared<IILF>();
+        iilf->fit(m_datas[linear_offset]);
       }
 
-      std::shared_ptr<IILF> iilf;
-      iilf->fit(wis, indirects);
-
-      for (; j < sampler->getSampleCount(); j++) {
+      for (size_t j = 0; j < sampler->getSampleCount(); j++) {
         rRec.newQuery(queryType, sensor->getMedium());
         Point2 samplePos(Point2(offset) + Vector2(rRec.nextSample2D()));
 
@@ -296,7 +285,15 @@ public:
 
         sensorRay.scaleDifferential(diffScaleFactor);
 
-        spec *= Li(sensorRay, rRec, nullptr, nullptr, iilf);
+        TrainingInfo info{offset, Vector(.0f), Spectrum(.0f)};
+
+        spec *= Li(sensorRay, rRec, &info, iilf);
+
+        if (m_is_training) {
+          m_datas[linear_offset].emplace_back(
+              std::pair{info.wi_local, info.li});
+        }
+
         block->put(samplePos, spec, rRec.alpha);
         sampler->advance();
       }
@@ -309,7 +306,65 @@ private:
   bool m_only_indirect;
   bool m_hide_emitters;
   int m_training_samples;
+
+  bool m_is_training;
+
+  static constexpr int m_screen_size = 512 * 288;
+
+  mutable std::vector<std::pair<Vector, Spectrum>> m_datas[m_screen_size];
 };
+
+bool AutointControlVariate::preprocess(const Scene *scene, RenderQueue *queue,
+                                       const RenderJob *job, int sceneResID,
+                                       int sensorResID, int samplerResID) {
+  ref<Scheduler> sched = Scheduler::getInstance();
+  train(static_cast<Scene *>(sched->getResource(sceneResID)), queue, job,
+        sensorResID);
+  return true;
+}
+
+void AutointControlVariate::train(Scene *scene, RenderQueue *queue,
+                                  const RenderJob *job, int sensorResID) {
+  m_is_training = true;
+
+  ref<Scheduler> sched = Scheduler::getInstance();
+  ref<Sensor> sensor = static_cast<Sensor *>(sched->getResource(sensorResID));
+  ref<Scene> train_scene = new Scene(scene);
+
+  const int trainSceneResID = sched->registerResource(train_scene);
+
+  int num_iterations = 1; // TODO
+  for (int i = 0; i < num_iterations; ++i) {
+    Properties training_sampler_props = scene->getSampler()->getProperties();
+
+    training_sampler_props.removeProperty("sampleCount");
+    training_sampler_props.setSize("sampleCount", m_training_samples);
+
+    ref<Sampler> train_sampler =
+        static_cast<Sampler *>(PluginManager::getInstance()->createObject(
+            MTS_CLASS(Sampler), training_sampler_props));
+    train_sampler->configure();
+    train_scene->setSampler(train_sampler);
+
+    //* Create a sampler for each thread
+    std::vector<SerializableObject *> samplers(sched->getCoreCount());
+    for (size_t i = 0; i < sched->getCoreCount(); ++i) {
+      ref<Sampler> cloned_sampler = train_sampler->clone();
+      cloned_sampler->incRef();
+      samplers[i] = cloned_sampler.get();
+    }
+    int trainingSamplerResID = sched->registerMultiResource(samplers);
+    for (size_t i = 0; i < sched->getCoreCount(); ++i)
+      samplers[i]->decRef();
+
+    SamplingIntegrator::render(train_scene, queue, job, trainSceneResID,
+                               sensorResID, trainingSamplerResID);
+    sched->unregisterResource(trainingSamplerResID);
+    sensor->getFilm()->clear();
+  }
+
+  m_is_training = false;
+}
 
 MTS_IMPLEMENT_CLASS_S(AutointControlVariate, false, MonteCarloIntegrator)
 MTS_EXPORT_PLUGIN(AutointControlVariate, "Autoint control variate pt");

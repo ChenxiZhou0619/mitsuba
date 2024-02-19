@@ -316,6 +316,15 @@
         </descr>
     </plugin>
 
+    
+    <plugin type="integrator" name="autoint"
+        readableName="neural control variate with autoint"
+        show="true" className="AutointControlVariate" extends="MonteCarloIntegrator">
+        <descr>
+            None.
+        </descr>
+    </plugin>
+
 
     <plugin type="integrator" name="sdtracking"
         readableName="Spectral tracking"

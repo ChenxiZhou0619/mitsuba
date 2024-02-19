@@ -36,8 +36,6 @@ add_mts_plugin(pathgrid     volumetric/pathgrid.cpp)
 # Radiance Cache
 add_mts_plugin(rcpt radiancecache/radiancecache.cpp)
 
-
-
 # Gradient Path-Tracing
 add_mts_plugin(gpt 
     # tracer
@@ -57,3 +55,9 @@ add_mts_plugin(gpt
     gradient/poisson_solver/Solver.cpp
 )
 
+# Autoint control variate Path-Tracing
+add_mts_plugin(
+    autoint 
+
+    autoint/autoint_cv.cpp
+)
